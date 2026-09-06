@@ -28,13 +28,40 @@ function Prose({ label, value }: { label: string; value?: string }) {
   );
 }
 
+function Section({
+  title,
+  children,
+  open = false,
+}: {
+  title: string;
+  children: React.ReactNode;
+  open?: boolean;
+}) {
+  return (
+    <details open={open} className="border" style={{ borderColor: "var(--rule)" }}>
+      <summary className="dtu-focus cursor-pointer list-none px-3 py-2.5 text-sm font-medium marker:content-['']">
+        <span className="flex items-center gap-2">
+          <svg
+            viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0 transition-transform"
+            fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"
+            strokeLinejoin="round" aria-hidden
+            style={{ color: "var(--ink-soft)" }}
+          >
+            <path d="m9 6 6 6-6 6" />
+          </svg>
+          {title}
+        </span>
+      </summary>
+      <div className="border-t px-3 py-3" style={{ borderColor: "var(--rule)" }}>{children}</div>
+    </details>
+  );
+}
+
 function GradeChart({ bars }: { bars: CourseAnalysis["gradeDistribution"] }) {
-  if (bars.length === 0) return null;
   const max = Math.max(...bars.map((b) => b.percent), 1);
   return (
     <div>
-      <p className="dtu-heading">Grade distribution</p>
-      <ul className="mt-2 space-y-1">
+      <ul className="space-y-1">
         {bars.map((bar) => (
           <li key={bar.grade} className="flex items-center gap-2 text-xs">
             <span className="w-10 shrink-0 text-right tabular-nums">{bar.grade}</span>
@@ -90,6 +117,7 @@ export function CourseModal({
 }) {
   const [analysis, setAnalysis] = useState<CourseAnalysis | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
+  const [editingNickname, setEditingNickname] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -114,14 +142,68 @@ export function CourseModal({
       header={
         <div className="flex items-start gap-3">
           <span aria-hidden className="mt-1 h-8 w-1.5 shrink-0" style={{ background: course.colour }} />
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-sm font-medium tabular-nums" style={{ color: "var(--color-dtu-red)" }}>
               {course.code}
               {course.module && <span style={{ color: "var(--ink-soft)" }}> · {course.module}</span>}
               {analysis?.ects && <span style={{ color: "var(--ink-soft)" }}> · {analysis.ects} ECTS</span>}
             </p>
-            <h2 className="text-lg font-medium leading-tight">{course.title}</h2>
-            {analysis?.danishTitle && (
+
+            <div className="flex flex-wrap items-baseline gap-x-2">
+              {/* The real title always stands. A short name sits beside it, never
+                  in place of it, so the course stays identifiable here. */}
+              <h2 className="text-lg font-medium leading-tight">{course.title}</h2>
+              {nickname && !editingNickname && (
+                <span className="text-sm" style={{ color: "var(--ink-soft)" }}>{nickname}</span>
+              )}
+              {!editingNickname && (
+                <button
+                  onClick={() => setEditingNickname(true)}
+                  className="dtu-focus -m-1 flex h-8 w-8 shrink-0 items-center justify-center"
+                  style={{ color: "var(--ink-soft)" }}
+                  aria-label={nickname ? "Edit short name" : "Add a short name"}
+                  title={nickname ? "Edit short name" : "Add a short name"}
+                >
+                  <svg
+                    viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor"
+                    strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden
+                  >
+                    <path d="M12 20h9" />
+                    <path d="M16.4 3.6a2 2 0 0 1 2.8 2.8L7.6 18H4.8v-2.8Z" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            {editingNickname && (
+              <div className="mt-1.5 flex items-center gap-2">
+                <input
+                  autoFocus
+                  value={nickname}
+                  onChange={(e) => onNicknameChange(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && setEditingNickname(false)}
+                  maxLength={24}
+                  placeholder="Short name, e.g. DL"
+                  aria-label="Short name"
+                  className="dtu-focus w-40 border px-2 py-1 text-sm outline-none"
+                  style={{ borderColor: "var(--rule-strong)", background: "var(--surface)", color: "var(--ink)" }}
+                />
+                <button
+                  onClick={() => setEditingNickname(false)}
+                  className="dtu-focus border px-2 py-1 text-xs"
+                  style={{ borderColor: "var(--rule-strong)" }}
+                >
+                  Done
+                </button>
+              </div>
+            )}
+            {editingNickname && (
+              <p className="mt-1 text-xs" style={{ color: "var(--ink-soft)" }}>
+                Shown in the timetable on narrow screens. The full title is never replaced.
+              </p>
+            )}
+
+            {analysis?.danishTitle && !editingNickname && (
               <p className="text-xs" style={{ color: "var(--ink-soft)" }}>{analysis.danishTitle}</p>
             )}
           </div>
@@ -146,44 +228,23 @@ export function CourseModal({
             </a>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="border p-2.5" style={{ borderColor: "var(--rule)" }}>
-              <p className="dtu-heading">Scheduled</p>
-              <p className="mt-0.5 text-sm">
-                {course.weekday && course.slot ? `${course.weekday} ${course.slot}` : "Not in the feed"}
-              </p>
-            </div>
-            <div className="border p-2.5" style={{ borderColor: "var(--rule)" }}>
-              <p className="dtu-heading">Rooms booked</p>
-              <p className="mt-0.5 text-sm">
-                {course.rooms.length
-                  ? [...new Set(course.rooms.map((r) => r.building))].map((b) => `Building ${b}`).join(", ")
-                  : "None in the feed"}
-              </p>
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="nickname" className="dtu-heading">Short name</label>
-            <p className="mt-1 text-xs" style={{ color: "var(--ink-soft)" }}>
-              Used in the timetable on narrow screens, where the full title does not fit.
-              On a wide screen the full title is always shown.
-            </p>
-            <input
-              id="nickname"
-              value={nickname}
-              onChange={(e) => onNicknameChange(e.target.value)}
-              maxLength={24}
-              placeholder={course.title}
-              className="dtu-focus mt-2 w-full max-w-xs border px-2 py-1.5 text-sm outline-none"
-              style={{ borderColor: "var(--rule-strong)", background: "var(--surface)", color: "var(--ink)" }}
-            />
-          </div>
+          <p className="text-sm" style={{ color: "var(--ink-soft)" }}>
+            {course.weekday && course.slot ? (
+              <span style={{ color: "var(--ink)" }}>{course.weekday} {course.slot}</span>
+            ) : (
+              "Not in the feed"
+            )}
+            {course.rooms.length > 0 && (
+              <>
+                {" · "}
+                {[...new Set(course.rooms.map((r) => r.building))].join(", ")}
+              </>
+            )}
+          </p>
 
           {series.length > 0 && (
-            <div>
-              <p className="dtu-heading">Recurring entries</p>
-              <p className="mt-1 text-xs" style={{ color: "var(--ink-soft)" }}>
+            <Section title={`Recurring entries (${series.length})`} open={series.length > 1}>
+              <p className="text-xs" style={{ color: "var(--ink-soft)" }}>
                 DTU sometimes books one course into several rooms at the same hour. Switch off the
                 ones you do not attend — this is the only place to switch them back on.
               </p>
@@ -213,7 +274,7 @@ export function CourseModal({
                   </li>
                 ))}
               </ul>
-            </div>
+            </Section>
           )}
 
           {state === "loading" && (
@@ -245,12 +306,15 @@ export function CourseModal({
                 </p>
               )}
 
-              <GradeChart bars={analysis.gradeDistribution} />
+              {analysis.gradeDistribution.length > 0 && (
+                <Section title="Grade distribution">
+                  <GradeChart bars={analysis.gradeDistribution} />
+                </Section>
+              )}
 
               {analysis.ratings.length > 0 && (
-                <div>
-                  <p className="dtu-heading">Student evaluation</p>
-                  <ul className="mt-1.5 space-y-0.5 text-sm" style={{ color: "var(--ink-soft)" }}>
+                <Section title="Student evaluation">
+                  <ul className="space-y-0.5 text-sm" style={{ color: "var(--ink-soft)" }}>
                     {analysis.ratings.map((r) => (
                       <li key={r.label} className="flex justify-between gap-3">
                         <span className="capitalize">{r.label}</span>
@@ -258,13 +322,12 @@ export function CourseModal({
                       </li>
                     ))}
                   </ul>
-                </div>
+                </Section>
               )}
 
               {analysis.semesterBreakdown.length > 0 && (
-                <div>
-                  <p className="dtu-heading">Semester breakdown</p>
-                  <div className="mt-1.5 overflow-x-auto">
+                <Section title="Semester breakdown">
+                  <div className="overflow-x-auto">
                     <table className="w-full min-w-[22rem] border-collapse text-sm">
                       <thead>
                         <tr className="text-center" style={{ color: "var(--ink-soft)" }}>
@@ -286,18 +349,25 @@ export function CourseModal({
                       </tbody>
                     </table>
                   </div>
-                </div>
+                </Section>
               )}
 
-              <div className="space-y-3">
-                <Prose label="Exam" value={[f["exam type"], f["duration"], f["aid"]].filter(Boolean).join(" · ")} />
-                <Prose label="Scope and form" value={f["scope and form"]} />
-                <Prose label="Prerequisites" value={f["prerequisites"]} />
-                <Prose label="Responsible" value={analysis.responsible ?? undefined} />
-                <Prose label="Content" value={f["content"]} />
-                <Prose label="Objectives" value={f["objectives"]} />
-                <Prose label="Teacher's note" value={f["teacher's note"]} />
-              </div>
+              <Section title="Exam and prerequisites">
+                <div className="space-y-3">
+                  <Prose label="Exam" value={[f["exam type"], f["duration"], f["aid"]].filter(Boolean).join(" · ")} />
+                  <Prose label="Scope and form" value={f["scope and form"]} />
+                  <Prose label="Prerequisites" value={f["prerequisites"]} />
+                  <Prose label="Responsible" value={analysis.responsible ?? undefined} />
+                </div>
+              </Section>
+
+              <Section title="Course description">
+                <div className="space-y-3">
+                  <Prose label="Content" value={f["content"]} />
+                  <Prose label="Objectives" value={f["objectives"]} />
+                  <Prose label="Teacher's note" value={f["teacher's note"]} />
+                </div>
+              </Section>
 
               <p className="border-t pt-3 text-xs" style={{ borderColor: "var(--rule)", color: "var(--ink-soft)" }}>
                 Statistics from the DTU Course Analyzer, an independent student project.

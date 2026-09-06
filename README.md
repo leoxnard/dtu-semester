@@ -51,9 +51,10 @@ Tapping it opens the full forecast for Kongens Lyngby at
 
 ## Short names
 
-Courses can be given a short name in their details — "DL" for Deep learning.
-It is used in the timetable only on phone-width screens, where the full title
-does not fit; a wide screen always shows the full title. The choice is keyed to
+Courses can be given a short name from the pencil beside their title. It sits
+next to the full title, never in place of it, so the course stays identifiable
+where you set it. It is used in the timetable only on phone-width screens, where
+the full title does not fit; a wide screen always shows the full title. The choice is keyed to
 the viewport rather than to whether the grid overflows, because shortening the
 titles changes the content width and measuring that to decide whether to shorten
 would flip back and forth forever.
