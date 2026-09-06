@@ -110,6 +110,19 @@ body {
   :root:not([data-theme="light"]) .dtu-mark { color: #ffffff; }
 }
 
+/*
+ * Safari on iOS zooms the page in whenever a focused field's text is smaller
+ * than 16px, and never zooms back out. Touch devices therefore get 16px form
+ * text regardless of the visual scale used elsewhere.
+ */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
 /* DTU's identity is squared off — no rounded corners anywhere in the chrome. */
 .dtu-panel {
   background: var(--surface);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Dialog } from "./Dialog";
 import type { CourseAnalysis } from "@/lib/analyzer";
 import type { Course, ScheduleEvent } from "@/lib/schedule";
 import { seriesKey, seriesLabel } from "@/lib/series";
@@ -91,12 +92,6 @@ export function CourseModal({
   const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  useEffect(() => {
     let cancelled = false;
     setState("loading");
     fetch(`/api/course/${course.code}`)
@@ -113,23 +108,13 @@ export function CourseModal({
   const f = analysis?.facts ?? {};
 
   return (
-    <div
-      className="fixed inset-0 z-[1000] flex items-end justify-center bg-black/40 sm:items-center"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label={`${course.code} ${course.title}`}
-    >
-      <div
-        className="dtu-panel max-h-[92dvh] w-full max-w-3xl overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <header
-          className="sticky top-0 flex items-start gap-3 border-b p-4"
-          style={{ borderColor: "var(--rule-strong)", background: "var(--surface)" }}
-        >
+    <Dialog
+      label={`${course.code} ${course.title}`}
+      onClose={onClose}
+      header={
+        <div className="flex items-start gap-3">
           <span aria-hidden className="mt-1 h-8 w-1.5 shrink-0" style={{ background: course.colour }} />
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0">
             <p className="text-sm font-medium tabular-nums" style={{ color: "var(--color-dtu-red)" }}>
               {course.code}
               {course.module && <span style={{ color: "var(--ink-soft)" }}> · {course.module}</span>}
@@ -140,12 +125,10 @@ export function CourseModal({
               <p className="text-xs" style={{ color: "var(--ink-soft)" }}>{analysis.danishTitle}</p>
             )}
           </div>
-          <button onClick={onClose} className="dtu-focus shrink-0 px-2 text-xl leading-none" aria-label="Close">
-            ×
-          </button>
-        </header>
-
-        <div className="space-y-5 p-4">
+        </div>
+      }
+    >
+      <div className="space-y-5">
           <div className="flex flex-wrap gap-2">
             <a href={COURSE_ANALYZER_URL(course.code)} target="_blank" rel="noreferrer noopener"
                className="dtu-focus px-3 py-1.5 text-xs font-medium text-white" style={{ background: "var(--color-dtu-red)" }}>
@@ -321,8 +304,7 @@ export function CourseModal({
               </p>
             </>
           )}
-        </div>
       </div>
-    </div>
+    </Dialog>
   );
 }

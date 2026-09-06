@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { Dialog } from "./Dialog";
 import type { Course } from "@/lib/schedule";
 import type { CustomEntry } from "@/lib/store";
 
@@ -33,12 +34,6 @@ export function AddEntry({
   const [courseCode, setCourseCode] = useState("");
   const [location, setLocation] = useState("");
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   const field = {
     borderColor: "var(--rule-strong)",
     background: "var(--surface)",
@@ -46,16 +41,13 @@ export function AddEntry({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[1000] flex items-end justify-center bg-black/40 sm:items-center"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Add an entry"
+    <Dialog
+      label="Add an entry"
+      onClose={onClose}
+      header={<h2 className="text-lg font-medium">Add to the calendar</h2>}
     >
       <form
-        className="dtu-panel max-h-[92dvh] w-full max-w-md overflow-y-auto p-4"
-        onClick={(e) => e.stopPropagation()}
+        id="add-entry-form"
         onSubmit={(e) => {
           e.preventDefault();
           if (!title.trim()) return;
@@ -72,14 +64,7 @@ export function AddEntry({
           onClose();
         }}
       >
-        <div className="flex items-start">
-          <h2 className="flex-1 text-lg font-medium">Add to the calendar</h2>
-          <button type="button" onClick={onClose} className="dtu-focus px-2 text-xl leading-none" aria-label="Close">
-            ×
-          </button>
-        </div>
-
-        <div className="mt-3 flex border" style={{ borderColor: "var(--rule-strong)" }} role="group" aria-label="Type">
+        <div className="flex border" style={{ borderColor: "var(--rule-strong)" }} role="group" aria-label="Type">
           {(["task", "event"] as const).map((option) => (
             <button
               key={option}
@@ -183,6 +168,6 @@ export function AddEntry({
           </button>
         </div>
       </form>
-    </div>
+    </Dialog>
   );
 }
