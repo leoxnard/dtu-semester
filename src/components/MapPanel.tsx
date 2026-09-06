@@ -1,0 +1,148 @@
+"use client";
+
+import dynamic from "next/dynamic";
+import type { MapFocus } from "./CampusMap";
+import { appleMapsUrl, googleMapsUrl, type Building } from "@/lib/buildings";
+import type { Room } from "@/lib/rooms";
+
+// Leaflet touches `window` on import, so it must never run during SSR.
+const CampusMap = dynamic(() => import("./CampusMap"), {
+  ssr: false,
+  loading: () => (
+    <div
+      className="flex h-full w-full items-center justify-center text-sm"
+      style={{ minHeight: "22rem", background: "var(--surface-alt)", color: "var(--ink-soft)" }}
+    >
+      Loading campus map…
+    </div>
+  ),
+});
+
+export type MapSelection = {
+  title: string;
+  courseCode: string | null;
+  rooms: Room[];
+  focus: MapFocus;
+  chosenRoomRaw: string | null;
+  onChooseRoom: ((raw: string | null) => void) | null;
+};
+
+export function MapPanel({ selection }: { selection: MapSelection | null }) {
+  const target: Building | null = selection?.focus.primary ?? selection?.focus.buildings[0] ?? null;
+  const rooms = selection?.rooms ?? [];
+  const multiple = rooms.length > 1;
+
+  return (
+    <section aria-labelledby="map-heading">
+      <h2 id="map-heading" className="dtu-heading mb-2">Campus map</h2>
+
+      <div className="dtu-panel grid lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="min-h-[22rem] lg:min-h-[26rem]">
+          <CampusMap focus={selection?.focus ?? null} />
+        </div>
+
+        <div className="border-t p-4 lg:border-l lg:border-t-0" style={{ borderColor: "var(--rule)" }}>
+          {!selection ? (
+            <p className="text-sm" style={{ color: "var(--ink-soft)" }}>
+              Select an event in the calendar above and the map will zoom to its building.
+            </p>
+          ) : (
+            <>
+              <p className="text-sm font-medium leading-snug">{selection.title}</p>
+              {selection.courseCode && (
+                <p className="text-xs tabular-nums" style={{ color: "var(--ink-soft)" }}>
+                  {selection.courseCode}
+                </p>
+              )}
+
+              {rooms.length === 0 ? (
+                <p className="mt-3 text-sm" style={{ color: "var(--ink-soft)" }}>
+                  No room in the feed for this event.
+                </p>
+              ) : (
+                <div className="mt-3">
+                  {multiple && (
+                    <p className="dtu-heading mb-1.5">
+                      {rooms.length} rooms booked — mark yours
+                    </p>
+                  )}
+                  <ul className="space-y-1">
+                    {rooms.map((room) => {
+                      const chosen = selection.chosenRoomRaw === room.raw;
+                      return (
+                        <li key={room.raw}>
+                          <button
+                            disabled={!selection.onChooseRoom}
+                            onClick={() => selection.onChooseRoom?.(chosen ? null : room.raw)}
+                            className="dtu-focus flex w-full items-baseline gap-2 border px-2 py-1.5 text-left text-sm disabled:cursor-default"
+                            style={{
+                              borderColor: chosen ? "var(--color-dtu-red)" : "var(--rule)",
+                              background: chosen ? "var(--surface-alt)" : undefined,
+                            }}
+                            aria-pressed={chosen}
+                            title={selection.onChooseRoom ? (chosen ? "Unmark this room" : "Mark this as your room") : undefined}
+                          >
+                            <span className="font-medium tabular-nums">
+                              {room.building ?? "?"}
+                            </span>
+                            <span style={{ color: "var(--ink-soft)" }}>
+                              {room.room ?? room.raw}
+                              {room.capacity ? ` · ${room.capacity} seats` : ""}
+                            </span>
+                            {chosen && (
+                              <span
+                                className="ml-auto shrink-0 text-[10px] font-medium uppercase tracking-wide"
+                                style={{ color: "var(--color-dtu-red)" }}
+                              >
+                                Yours
+                              </span>
+                            )}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  {multiple && !selection.chosenRoomRaw && (
+                    <p className="mt-2 text-xs" style={{ color: "var(--ink-soft)" }}>
+                      DTU books the whole room pool for this course. Marking yours pins the map to
+                      it — stored in this browser only.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {target && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <a
+                    href={googleMapsUrl(target, `DTU Building ${target.ref}`)}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="dtu-focus px-3 py-1.5 text-xs font-medium text-white"
+                    style={{ background: "var(--color-dtu-red)" }}
+                  >
+                    Google Maps ↗
+                  </a>
+                  <a
+                    href={appleMapsUrl(target, `DTU Building ${target.ref}`)}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="dtu-focus border px-3 py-1.5 text-xs font-medium"
+                    style={{ borderColor: "var(--rule-strong)" }}
+                  >
+                    Apple Maps ↗
+                  </a>
+                </div>
+              )}
+
+              {selection.focus.buildings.length === 0 && rooms.length > 0 && (
+                <p className="mt-3 text-xs" style={{ color: "var(--ink-soft)" }}>
+                  This building is not mapped in OpenStreetMap, so there is nothing to pin.
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}

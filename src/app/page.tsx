@@ -1,69 +1,188 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Onboarding } from "@/components/Onboarding";
+import { Header } from "@/components/Header";
+import { WeekGrid } from "@/components/WeekGrid";
+import { Agenda } from "@/components/Agenda";
+import { MapPanel, type MapSelection } from "@/components/MapPanel";
+import { CourseModal } from "@/components/CourseModal";
+import { findBuilding, type Building } from "@/lib/buildings";
+import { useFeedUrl, useRoomChoices } from "@/lib/store";
+import type { Course, Schedule, ScheduleEvent } from "@/lib/schedule";
+import type { Room } from "@/lib/rooms";
+
+type Loaded = { schedule: Schedule; fetchedAt: number; warning?: string };
+
+export default function Page() {
+  const { feedUrl, setFeedUrl, ready } = useFeedUrl();
+  const { choices, choose } = useRoomChoices();
+
+  const [data, setData] = useState<Loaded | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [selectedEventUid, setSelectedEventUid] = useState<string | null>(null);
+  const [modalCourse, setModalCourse] = useState<Course | null>(null);
+
+  const load = useCallback(
+    async (url: string, refresh = false) => {
+      setBusy(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/calendar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url, refresh }),
+        });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error ?? "Could not load the calendar.");
+        setData({ schedule: body.schedule, fetchedAt: body.fetchedAt, warning: body.warning });
+        return true;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not load the calendar.");
+        return false;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (ready && feedUrl) void load(feedUrl);
+  }, [ready, feedUrl, load]);
+
+  const selectedEvent = useMemo(
+    () => data?.schedule.events.find((e) => e.uid === selectedEventUid) ?? null,
+    [data, selectedEventUid],
+  );
+
+  /**
+   * Turns whichever event is selected into a map focus. A course whose room the
+   * user has marked pins only that room; otherwise every booked building shows
+   * and the map frames all of them.
+   */
+  const selection: MapSelection | null = useMemo(() => {
+    if (!selectedEvent) return null;
+
+    const rooms: Room[] = selectedEvent.rooms;
+    const chosenRaw = selectedEvent.courseCode ? choices[selectedEvent.courseCode] ?? null : null;
+    const chosenRoom = rooms.find((r) => r.raw === chosenRaw) ?? null;
+
+    const buildings = [
+      ...new Map(
+        rooms
+          .map((r) => findBuilding(r.building))
+          .filter((b): b is Building => b !== null)
+          .map((b) => [b.ref, b]),
+      ).values(),
+    ];
+
+    return {
+      title: selectedEvent.title,
+      courseCode: selectedEvent.courseCode,
+      rooms,
+      chosenRoomRaw: chosenRaw,
+      onChooseRoom: selectedEvent.courseCode
+        ? (raw) => choose(selectedEvent.courseCode as string, raw)
+        : null,
+      focus: {
+        buildings: chosenRoom ? buildings.filter((b) => b.ref === findBuilding(chosenRoom.building)?.ref) : buildings,
+        primary: chosenRoom ? findBuilding(chosenRoom.building) : null,
+        label: chosenRoom?.room ?? null,
+      },
+    };
+  }, [selectedEvent, choices, choose]);
+
+  if (!ready) return null;
+
+  if (!feedUrl) {
+    return (
+      <Onboarding
+        error={error}
+        busy={busy}
+        onSubmit={async (url) => {
+          if (await load(url)) setFeedUrl(url);
+        }}
+      />
+    );
+  }
+
+  if (!data) {
+    return (
+      <main className="mx-auto max-w-2xl px-5 py-20 text-center">
+        {error ? (
+          <>
+            <p className="text-sm" style={{ color: "var(--color-dtu-red)" }}>{error}</p>
+            <div className="mt-4 flex justify-center gap-3">
+              <button onClick={() => void load(feedUrl, true)} className="dtu-focus px-4 py-2 text-sm font-medium text-white" style={{ background: "var(--color-dtu-red)" }}>
+                Try again
+              </button>
+              <button onClick={() => setFeedUrl(null)} className="dtu-focus border px-4 py-2 text-sm" style={{ borderColor: "var(--rule-strong)" }}>
+                Use a different link
+              </button>
+            </div>
+          </>
+        ) : (
+          <p className="text-sm" style={{ color: "var(--ink-soft)" }}>Loading your semester…</p>
+        )}
       </main>
-    </div>
+    );
+  }
+
+  const { schedule } = data;
+
+  return (
+    <>
+      <Header
+        semesterLabel={schedule.semester.label}
+        week={schedule.week}
+        fetchedAt={data.fetchedAt}
+        refreshing={busy}
+        onRefresh={() => void load(feedUrl, true)}
+        onForget={() => {
+          setFeedUrl(null);
+          setData(null);
+          setSelectedEventUid(null);
+        }}
+      />
+
+      <main className="mx-auto max-w-6xl space-y-8 px-4 py-6 sm:px-6">
+        {data.warning && (
+          <p className="border p-2.5 text-sm" style={{ borderColor: "var(--color-dtu-red)", color: "var(--color-dtu-red)" }}>
+            {data.warning}
+          </p>
+        )}
+
+        {schedule.courses.length === 0 && (
+          <p className="border p-3 text-sm" style={{ borderColor: "var(--rule)", color: "var(--ink-soft)" }}>
+            No courses found for {schedule.semester.label}. If you subscribed to a single course
+            rather than “All Courses”, regenerate the link in DTU Learn.
+          </p>
+        )}
+
+        <WeekGrid
+          courses={schedule.courses}
+          term={schedule.semester.term}
+          onSelectCourse={setModalCourse}
+        />
+
+        <Agenda
+          events={schedule.events}
+          courses={schedule.courses}
+          selectedUid={selectedEventUid}
+          onSelectEvent={(e) => setSelectedEventUid((prev) => (prev === e.uid ? null : e.uid))}
+        />
+
+        <MapPanel selection={selection} />
+
+        <footer className="border-t pt-4 text-xs leading-relaxed" style={{ borderColor: "var(--rule)", color: "var(--ink-soft)" }}>
+          Map data © OpenStreetMap contributors. Course statistics from the DTU Course Analyzer.
+          Your calendar link stays in this browser.
+        </footer>
+      </main>
+
+      {modalCourse && <CourseModal course={modalCourse} onClose={() => setModalCourse(null)} />}
+    </>
   );
 }

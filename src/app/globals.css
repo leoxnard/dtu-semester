@@ -1,26 +1,99 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * DTU corporate design.
+ * Colours: designguide.dtu.dk/colours
+ * Type:    Neo Sans is DTU's primary typeface but is a licensed Monotype font
+ *          that cannot be redistributed. DTU's own guide names Arial as the
+ *          second corporate typeface, so that is the fallback. Drop licensed
+ *          NeoSansPro-{Regular,Medium,Bold}.woff2 into /public/fonts and
+ *          uncomment the @font-face blocks below to get the real thing.
+ */
+
+/*
+@font-face {
+  font-family: "Neo Sans Pro";
+  src: url("/fonts/NeoSansPro-Regular.woff2") format("woff2");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Neo Sans Pro";
+  src: url("/fonts/NeoSansPro-Medium.woff2") format("woff2");
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Neo Sans Pro";
+  src: url("/fonts/NeoSansPro-Bold.woff2") format("woff2");
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+*/
+
+@theme {
+  --color-dtu-red: #990000;
+  --color-dtu-blue: #2f3eea;
+  --color-dtu-bright-green: #1fd082;
+  --color-dtu-navy: #030f4f;
+  --color-dtu-yellow: #f6d04d;
+  --color-dtu-orange: #fc7634;
+  --color-dtu-pink: #f7bbb1;
+  --color-dtu-grey: #dadada;
+  --color-dtu-red-light: #e83f48;
+  --color-dtu-green: #008835;
+  --color-dtu-purple: #79238e;
+
+  --font-sans: "Neo Sans Pro", "Neo Sans", Arial, Helvetica, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+:root {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-alt: #f4f4f4;
+  --ink: #000000;
+  --ink-soft: #4a4a4a;
+  --rule: #dadada;
+  --rule-strong: #000000;
+  color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not([data-theme="light"]) {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --surface-alt: #1c1c1c;
+    --ink: #f2f2f2;
+    --ink-soft: #a8a8a8;
+    --rule: #2e2e2e;
+    --rule-strong: #4a4a4a;
+    color-scheme: dark;
   }
 }
 
+html, body { background: var(--bg); color: var(--ink); }
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
+
+/* DTU's identity is squared off — no rounded corners anywhere in the chrome. */
+.dtu-panel {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+}
+
+.dtu-heading {
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.6875rem;
+  color: var(--ink-soft);
+}
+
+.dtu-focus:focus-visible {
+  outline: 2px solid var(--color-dtu-red);
+  outline-offset: 2px;
+}
+
+/* Leaflet needs an explicit height and sane colours in dark mode. */
+.leaflet-container { background: var(--surface-alt); font-family: var(--font-sans); }
+.leaflet-control-attribution { font-size: 10px; }
