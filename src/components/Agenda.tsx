@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import type { Course, ScheduleEvent } from "@/lib/schedule";
 import { CAMPUS_TZ } from "@/lib/dtu";
-import { seriesKey } from "@/lib/series";
+import type { Room } from "@/lib/rooms";
 
 const dayFmt = new Intl.DateTimeFormat("en-GB", {
   timeZone: CAMPUS_TZ, weekday: "long", day: "numeric", month: "long",
@@ -64,10 +64,11 @@ export function Agenda({
   onSelectEvent,
   done,
   courseName,
+  chosenRoom,
   onToggleDone,
-  onHideOccurrence,
-  onHideSeries,
   hiddenSeriesCount,
+  onAddEntry,
+  onRemoveCustom,
 }: {
   events: ScheduleEvent[];
   courses: Course[];
@@ -76,10 +77,13 @@ export function Agenda({
   done: Set<string>;
   /** Course title for the code, already shortened if the screen is narrow. */
   courseName: (code: string | null) => string | null;
+  /** The room the user marked as theirs for this course, if any. */
+  chosenRoom: (code: string | null) => Room | null;
   onToggleDone: (uid: string) => void;
-  onHideOccurrence: (uid: string) => void;
-  onHideSeries: (key: string) => void;
   hiddenSeriesCount: number;
+  onAddEntry: () => void;
+  /** Custom entries carry an id so they can be deleted again. */
+  onRemoveCustom: (id: string) => void;
 }) {
   const todayKey = dayKeyFmt.format(new Date());
   const [baseOffset] = useState(defaultWeekOffset);
@@ -160,10 +164,18 @@ export function Agenda({
         )}
 
         {hiddenSeriesCount > 0 && (
-          <span className="ml-auto text-xs" style={{ color: "var(--ink-soft)" }}>
+          <span className="text-xs" style={{ color: "var(--ink-soft)" }}>
             {hiddenSeriesCount} hidden — turn back on in a course&rsquo;s details
           </span>
         )}
+
+        <button
+          onClick={onAddEntry}
+          className="dtu-focus ml-auto border px-3 py-1 text-xs font-medium"
+          style={{ borderColor: "var(--rule-strong)" }}
+        >
+          Add entry
+        </button>
       </div>
 
       <div className="dtu-panel">
@@ -194,25 +206,15 @@ export function Agenda({
                   const selected = event.uid === selectedUid;
                   const isDone = done.has(event.uid);
                   const buildings = [...new Set(event.rooms.map((r) => r.building).filter(Boolean))];
+                  // Once a room is marked as theirs, that is the answer — no
+                  // point still listing the whole pool or asking them to pick.
+                  const mine = chosenRoom(event.courseCode);
+                  const mineHere = mine && event.rooms.some((r) => r.raw === mine.raw) ? mine : null;
+                  const customId = event.uid.startsWith("custom:") ? event.uid.slice(7) : null;
 
                   return (
                     <li key={event.uid} className="border-b last:border-b-0" style={{ borderColor: "var(--rule)" }}>
-                      <div className="flex items-start" style={{ background: selected ? "var(--surface-alt)" : undefined }}>
-                        {isDeadline && (
-                          <label
-                            className="flex cursor-pointer items-center self-stretch pl-3 pr-1"
-                            title={isDone ? "Mark as not done" : "Mark as done"}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isDone}
-                              onChange={() => onToggleDone(event.uid)}
-                              className="dtu-focus h-4 w-4 accent-[var(--color-dtu-red)]"
-                            />
-                            <span className="sr-only">Mark &ldquo;{event.title}&rdquo; as done</span>
-                          </label>
-                        )}
-
+                      <div className="flex items-stretch" style={{ background: selected ? "var(--surface-alt)" : undefined }}>
                         <button
                           onClick={() => onSelectEvent(event)}
                           className="dtu-focus flex min-w-0 flex-1 items-start gap-3 px-3 py-2 text-left"
@@ -250,6 +252,14 @@ export function Agenda({
                                   Deadline
                                 </span>
                               )}
+                              {customId && (
+                                <span
+                                  className="border px-1 py-px text-[10px] font-medium uppercase tracking-wide"
+                                  style={{ borderColor: "var(--rule-strong)", color: "var(--ink-soft)" }}
+                                >
+                                  Added
+                                </span>
+                              )}
                             </span>
                             <span
                               className="block text-sm leading-snug"
@@ -257,41 +267,49 @@ export function Agenda({
                             >
                               {event.title}
                             </span>
-                            {buildings.length > 0 && (
+                            {mineHere ? (
                               <span className="block text-xs" style={{ color: "var(--ink-soft)" }}>
-                                Building {buildings.join(", ")}
-                                {buildings.length > 1 && " — select to see rooms"}
+                                Building {mineHere.building}
+                                {mineHere.room ? ` · ${mineHere.room}` : ""}
                               </span>
+                            ) : (
+                              buildings.length > 0 && (
+                                <span className="block text-xs" style={{ color: "var(--ink-soft)" }}>
+                                  Building {buildings.join(", ")}
+                                  {buildings.length > 1 && " — select to see rooms"}
+                                </span>
+                              )
                             )}
                           </span>
                         </button>
-                      </div>
 
-                      {selected && (
-                        <div
-                          className="flex flex-wrap items-center gap-2 border-t px-3 py-2"
-                          style={{ borderColor: "var(--rule)", background: "var(--surface-alt)" }}
-                        >
-                          <span className="dtu-heading">Hide</span>
+                        {customId && (
                           <button
-                            onClick={() => onHideOccurrence(event.uid)}
-                            className="dtu-focus border px-3 py-1.5 text-xs"
-                            style={{ borderColor: "var(--rule-strong)" }}
+                            onClick={() => onRemoveCustom(customId)}
+                            className="dtu-focus shrink-0 px-2 text-lg leading-none"
+                            style={{ color: "var(--ink-soft)" }}
+                            title="Delete this entry"
+                            aria-label={`Delete ${event.title}`}
                           >
-                            This one
+                            ×
                           </button>
-                          <button
-                            onClick={() => onHideSeries(seriesKey(event))}
-                            className="dtu-focus border px-3 py-1.5 text-xs"
-                            style={{ borderColor: "var(--rule-strong)" }}
+                        )}
+
+                        {isDeadline && (
+                          <label
+                            className="flex cursor-pointer items-center self-stretch pl-1 pr-3"
+                            title={isDone ? "Mark as not done" : "Mark as done"}
                           >
-                            Always
-                          </button>
-                          <span className="text-xs" style={{ color: "var(--ink-soft)" }}>
-                            Turn back on in the course&rsquo;s details.
-                          </span>
-                        </div>
-                      )}
+                            <input
+                              type="checkbox"
+                              checked={isDone}
+                              onChange={() => onToggleDone(event.uid)}
+                              className="dtu-focus h-4 w-4 accent-[var(--color-dtu-red)]"
+                            />
+                            <span className="sr-only">Mark &ldquo;{event.title}&rdquo; as done</span>
+                          </label>
+                        )}
+                      </div>
                     </li>
                   );
                 })}

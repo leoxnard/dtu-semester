@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTheme, type Theme } from "@/lib/store";
 import { DtuLogo } from "./DtuLogo";
+import { MoonIcon, SunIcon, SystemIcon } from "./ThemeIcons";
 
 type Weather = { temperature: number; precipitationProbability: number | null; code: number };
 
@@ -37,10 +38,10 @@ export function Header({
   const [weather, setWeather] = useState<Weather | null>(null);
   const { theme, setTheme } = useTheme();
 
-  const THEMES: { value: Theme; label: string; title: string }[] = [
-    { value: "light", label: "☀", title: "Light" },
-    { value: "dark", label: "☾", title: "Dark" },
-    { value: "system", label: "A", title: "Match system" },
+  const THEMES: { value: Theme; Icon: (p: { className?: string }) => React.ReactElement; title: string }[] = [
+    { value: "light", Icon: SunIcon, title: "Light" },
+    { value: "dark", Icon: MoonIcon, title: "Dark" },
+    { value: "system", Icon: SystemIcon, title: "Match system" },
   ];
 
   useEffect(() => {
@@ -99,21 +100,22 @@ export function Header({
         </button>
 
         <div className="flex border" style={{ borderColor: "var(--rule)" }} role="group" aria-label="Colour theme">
-          {THEMES.map((option) => {
-            const active = theme === option.value;
+          {THEMES.map(({ value, Icon, title }) => {
+            const active = theme === value;
             return (
               <button
-                key={option.value}
-                onClick={() => setTheme(option.value)}
-                className="dtu-focus w-9 py-1 text-sm leading-5"
+                key={value}
+                onClick={() => setTheme(value)}
+                className="dtu-focus flex h-7 w-9 items-center justify-center"
                 style={{
                   background: active ? "var(--color-dtu-red)" : "transparent",
                   color: active ? "#fff" : "var(--ink-soft)",
                 }}
                 aria-pressed={active}
-                title={option.title}
+                aria-label={title}
+                title={title}
               >
-                {option.label}
+                <Icon className="h-4 w-4" />
               </button>
             );
           })}

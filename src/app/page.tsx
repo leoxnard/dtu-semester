@@ -5,14 +5,15 @@ import { Onboarding } from "@/components/Onboarding";
 import { Header } from "@/components/Header";
 import { WeekGrid } from "@/components/WeekGrid";
 import { Agenda } from "@/components/Agenda";
-import { MapPanel, type MapSelection } from "@/components/MapPanel";
+import { MAP_SECTION_ID, MapPanel, type MapSelection } from "@/components/MapPanel";
 import { CourseModal, seriesForCourse } from "@/components/CourseModal";
 import { TimetableFullscreen } from "@/components/TimetableFullscreen";
 import { findBuilding, type Building } from "@/lib/buildings";
 import {
-  useDoneEvents, useFeedUrl, useHiddenSeries, useIsNarrow, useLastView, useNicknames,
-  useRoomChoices, useSkippedOccurrences,
+  useCustomEntries, useDoneEvents, useFeedUrl, useHiddenSeries, useIsNarrow, useLastView,
+  useNicknames, useRoomChoices,
 } from "@/lib/store";
+import { AddEntry } from "@/components/AddEntry";
 import { seriesKey } from "@/lib/series";
 import type { Course, Schedule, ScheduleEvent } from "@/lib/schedule";
 import type { Room } from "@/lib/rooms";
@@ -23,7 +24,7 @@ export default function Page() {
   const { feedUrl, setFeedUrl, ready } = useFeedUrl();
   const { choices, choose } = useRoomChoices();
   const { ids: done, toggle: toggleDone, prune: pruneDone } = useDoneEvents();
-  const { ids: skipped, toggle: toggleSkipped, prune: pruneSkipped } = useSkippedOccurrences();
+  const { entries: customEntries, addEntry, removeEntry } = useCustomEntries();
   const { ids: hiddenSeries, toggle: toggleSeries } = useHiddenSeries();
   const { view, setView, setLaunchView, ready: viewReady } = useLastView();
   const { nicknames, setNickname } = useNicknames();
@@ -44,6 +45,7 @@ export default function Page() {
   // timetable earns that, because it is the thing you glance at every morning.
   const [mapFullscreen, setMapFullscreen] = useState(false);
   const [pickedBuilding, setPickedBuilding] = useState<Building | null>(null);
+  const [addingEntry, setAddingEntry] = useState(false);
 
   /**
    * Opening a course's details counts as being somewhere other than the
@@ -109,18 +111,43 @@ export default function Page() {
   // in the feed. Drop the rest so it cannot pile up semester after semester.
   useEffect(() => {
     if (!data) return;
-    const live = new Set(data.schedule.events.map((e) => e.uid));
+    const live = new Set([
+      ...data.schedule.events.map((e) => e.uid),
+      ...customEntries.map((e) => `custom:${e.id}`),
+    ]);
     pruneDone(live);
-    pruneSkipped(live);
-  }, [data, pruneDone, pruneSkipped]);
+  }, [data, customEntries, pruneDone]);
+
+  /** Hand-added entries, shaped like feed events so one timeline renders both. */
+  const customEvents: ScheduleEvent[] = useMemo(
+    () =>
+      customEntries.map((entry) => {
+        const start = new Date(`${entry.date}T${entry.time ?? "00:00"}:00`);
+        return {
+          uid: `custom:${entry.id}`,
+          kind: entry.kind === "task" ? "deadline" : "teaching",
+          title: entry.title,
+          courseCode: entry.courseCode,
+          start: start.toISOString(),
+          end: null,
+          allDay: entry.time === null,
+          rooms: entry.location
+            ? [{ raw: entry.location, building: entry.location, room: null, capacity: null }]
+            : [],
+          learnUrl: null,
+        } satisfies ScheduleEvent;
+      }),
+    [customEntries],
+  );
 
   /** What the calendar actually shows: the feed minus anything hidden. */
   const visibleEvents = useMemo(() => {
-    if (!data) return [];
-    return data.schedule.events.filter(
-      (e) => !skipped.has(e.uid) && !hiddenSeries.has(seriesKey(e)),
-    );
-  }, [data, skipped, hiddenSeries]);
+    if (!data) return customEvents;
+    return [
+      ...data.schedule.events.filter((e) => !hiddenSeries.has(seriesKey(e))),
+      ...customEvents,
+    ];
+  }, [data, hiddenSeries, customEvents]);
 
   const selectedEvent = useMemo(
     () => visibleEvents.find((e) => e.uid === selectedEventUid) ?? null,
@@ -272,22 +299,33 @@ export default function Page() {
             const course = schedule.courses.find((c) => c.code === code);
             return course ? displayName(course) : null;
           }}
+          chosenRoom={(code) => {
+            if (!code) return null;
+            const raw = choices[code];
+            if (!raw) return null;
+            const course = schedule.courses.find((c) => c.code === code);
+            return course?.rooms.find((r) => r.raw === raw) ?? null;
+          }}
           selectedUid={selectedEventUid}
           onSelectEvent={(e) => {
             setPickedBuilding(null);
-            setSelectedEventUid((prev) => (prev === e.uid ? null : e.uid));
+            const next = selectedEventUid === e.uid ? null : e.uid;
+            setSelectedEventUid(next);
+            // On a phone the map sits far below the fold, so a selection that
+            // moves it is useless unless we go there too.
+            if (next && isNarrow) {
+              requestAnimationFrame(() =>
+                document
+                  .getElementById(MAP_SECTION_ID)
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+              );
+            }
           }}
           done={done}
           onToggleDone={toggleDone}
-          onHideOccurrence={(uid) => {
-            toggleSkipped(uid, true);
-            setSelectedEventUid(null);
-          }}
-          onHideSeries={(key) => {
-            toggleSeries(key, true);
-            setSelectedEventUid(null);
-          }}
           hiddenSeriesCount={hiddenSeries.size}
+          onAddEntry={() => setAddingEntry(true)}
+          onRemoveCustom={removeEntry}
         />
 
         <MapPanel
@@ -304,6 +342,14 @@ export default function Page() {
           calendar link stays in this browser.
         </footer>
       </main>
+
+      {addingEntry && (
+        <AddEntry
+          courses={schedule.courses}
+          onAdd={addEntry}
+          onClose={() => setAddingEntry(false)}
+        />
+      )}
 
       {modalCourse && (
         <CourseModal

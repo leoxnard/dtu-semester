@@ -15,10 +15,10 @@ const FEED_KEY = "dtu-semester.feed-url";
 const ROOM_KEY = "dtu-semester.room-choice";
 const DONE_KEY = "dtu-semester.done";
 const HIDDEN_SERIES_KEY = "dtu-semester.hidden-series";
-const SKIPPED_KEY = "dtu-semester.skipped";
 const THEME_KEY = "dtu-semester.theme";
 const VIEW_KEY = "dtu-semester.view";
 const NICKNAME_KEY = "dtu-semester.nicknames";
+const CUSTOM_KEY = "dtu-semester.custom-entries";
 
 function read(key: string): string | null {
   try {
@@ -137,11 +137,6 @@ export function useDoneEvents() {
   return useIdSet(DONE_KEY);
 }
 
-/** Single occurrences hidden with "hide this week". Keyed by event UID. */
-export function useSkippedOccurrences() {
-  return useIdSet(SKIPPED_KEY);
-}
-
 /** Whole recurring series hidden with "hide always". Keyed by series key. */
 export function useHiddenSeries() {
   return useIdSet(HIDDEN_SERIES_KEY);
@@ -154,17 +149,21 @@ export type Theme = "system" | "light" | "dark";
  * stamp data-theme on <html>, which the CSS overrides key off.
  */
 export function useTheme() {
-  const [theme, setThemeState] = useState<Theme>("system");
+  const [theme, setThemeState] = useState<Theme>("light");
 
   useEffect(() => {
     const stored = read(THEME_KEY);
-    const value: Theme = stored === "light" || stored === "dark" ? stored : "system";
+    // Light unless the reader has chosen otherwise — "system" is an explicit
+    // choice here, not the fallback, so the app looks the same on every device
+    // until someone says otherwise.
+    const value: Theme =
+      stored === "dark" || stored === "system" || stored === "light" ? stored : "light";
     setThemeState(value);
     apply(value);
   }, []);
 
   const setTheme = useCallback((value: Theme) => {
-    write(THEME_KEY, value === "system" ? null : value);
+    write(THEME_KEY, value);
     setThemeState(value);
     apply(value);
   }, []);
@@ -176,6 +175,54 @@ function apply(theme: Theme) {
   const root = document.documentElement;
   if (theme === "system") root.removeAttribute("data-theme");
   else root.setAttribute("data-theme", theme);
+}
+
+/* ------------------------------------------------------------------ */
+/* Entries the user adds by hand, alongside the ones from DTU Learn.    */
+/* ------------------------------------------------------------------ */
+
+export type CustomEntry = {
+  id: string;
+  kind: "event" | "task";
+  title: string;
+  /** yyyy-mm-dd, as typed — campus local, not UTC. */
+  date: string;
+  /** HH:mm, or null for an all-day entry. Tasks default to end of day. */
+  time: string | null;
+  courseCode: string | null;
+  location: string | null;
+};
+
+export function useCustomEntries() {
+  const [entries, setEntries] = useState<CustomEntry[]>([]);
+
+  useEffect(() => {
+    const stored = read(CUSTOM_KEY);
+    if (!stored) return;
+    try {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) setEntries(parsed as CustomEntry[]);
+    } catch {
+      write(CUSTOM_KEY, null);
+    }
+  }, []);
+
+  const persist = (next: CustomEntry[]) => {
+    write(CUSTOM_KEY, JSON.stringify(next));
+    return next;
+  };
+
+  const addEntry = useCallback((entry: Omit<CustomEntry, "id">) => {
+    setEntries((prev) =>
+      persist([...prev, { ...entry, id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}` }]),
+    );
+  }, []);
+
+  const removeEntry = useCallback((id: string) => {
+    setEntries((prev) => persist(prev.filter((e) => e.id !== id)));
+  }, []);
+
+  return { entries, addEntry, removeEntry };
 }
 
 

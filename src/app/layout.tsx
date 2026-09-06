@@ -24,7 +24,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           dangerouslySetInnerHTML={{
             __html:
               `try{var t=localStorage.getItem("dtu-semester.theme");` +
-              `if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}`,
+              `if(t!=="system")document.documentElement.setAttribute("data-theme",` +
+              `t==="dark"?"dark":"light")}catch(e){` +
+              `document.documentElement.setAttribute("data-theme","light")}`,
           }}
         />
       </head>

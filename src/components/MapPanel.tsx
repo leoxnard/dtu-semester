@@ -1,7 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { MapFocus } from "./CampusMap";
+import { useState } from "react";
+import type { MapFocus, Located } from "./CampusMap";
 import { appleMapsUrl, googleMapsUrl, type Building } from "@/lib/buildings";
 import type { Room } from "@/lib/rooms";
 
@@ -17,6 +18,9 @@ const CampusMap = dynamic(() => import("./CampusMap"), {
     </div>
   ),
 });
+
+/** Addressed by id so the page can scroll here without threading a ref through. */
+export const MAP_SECTION_ID = "campus-map";
 
 export type MapSelection = {
   title: string;
@@ -46,8 +50,43 @@ export function MapPanel({
   const rooms = pickedBuilding ? [] : selection?.rooms ?? [];
   const multiple = rooms.length > 1;
 
+  const [location, setLocation] = useState<Located | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState<string | null>(null);
+
+  const locate = () => {
+    if (!("geolocation" in navigator)) {
+      setLocateError("This browser cannot share a location.");
+      return;
+    }
+    setLocating(true);
+    setLocateError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocation({
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+        });
+        setLocating(false);
+      },
+      (err) => {
+        setLocating(false);
+        // Browsers only allow this on https or localhost, which is the most
+        // likely reason it fails once this is deployed behind a domain.
+        setLocateError(
+          err.code === err.PERMISSION_DENIED
+            ? "Location permission was declined."
+            : "Could not get a location fix.",
+        );
+      },
+      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 30_000 },
+    );
+  };
+
   return (
     <section
+      id={MAP_SECTION_ID}
       aria-labelledby="map-heading"
       className={fullscreen ? "fixed inset-0 z-[900] flex flex-col p-3" : undefined}
       // margin:0 matters: the parent's space-y-8 puts a 32px margin on this
@@ -58,8 +97,17 @@ export function MapPanel({
       <div className="mb-2 flex items-center gap-3">
         <h2 id="map-heading" className="dtu-heading">Campus map</h2>
         <button
+          onClick={location ? () => setLocation(null) : locate}
+          disabled={locating}
+          className="dtu-focus ml-auto border px-3 py-1 text-xs font-medium disabled:opacity-50"
+          style={{ borderColor: "var(--rule-strong)" }}
+          title={locateError ?? undefined}
+        >
+          {locating ? "Locating…" : location ? "Hide my location" : "My location"}
+        </button>
+        <button
           onClick={onToggleFullscreen}
-          className="dtu-focus ml-auto border px-3 py-1 text-xs font-medium"
+          className="dtu-focus border px-3 py-1 text-xs font-medium"
           style={{ borderColor: "var(--rule-strong)" }}
         >
           {fullscreen ? "Exit full screen" : "Full screen"}
@@ -81,6 +129,7 @@ export function MapPanel({
                 : selection?.focus ?? null
             }
             onSelectBuilding={onPickBuilding}
+            location={location}
           />
         </div>
 
@@ -92,6 +141,10 @@ export function MapPanel({
           }
           style={{ borderColor: "var(--rule)" }}
         >
+          {locateError && (
+            <p className="mb-3 text-xs" style={{ color: "var(--color-dtu-red)" }}>{locateError}</p>
+          )}
+
           {pickedBuilding ? (
             <>
               <p className="text-sm font-medium leading-snug">Building {pickedBuilding.ref}</p>
@@ -124,7 +177,7 @@ export function MapPanel({
                 </p>
               ) : (
                 <div className="mt-3">
-                  {multiple && (
+                  {multiple && !selection.chosenRoomRaw && (
                     <p className="dtu-heading mb-1.5">
                       {rooms.length} rooms booked — mark yours
                     </p>

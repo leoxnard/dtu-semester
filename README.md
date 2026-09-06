@@ -22,22 +22,26 @@ else to configure.
    weeks. On a Saturday or Sunday it opens on the coming week, since teaching
    runs Monday to Friday and the current one holds nothing left to act on. Lectures and deadlines share the timeline but are visually distinct.
    Selecting an event zooms the map to its building.
-3. **Campus map** — OpenStreetMap, with every DTU building numbered. The selected
-   building gets Google Maps and Apple Maps walking directions. It has its own
-   full-screen mode.
+3. **Campus map** — OpenStreetMap, with every DTU building numbered and tappable,
+   so you can get directions to a building you have no teaching in. The selected
+   building gets Google Maps and Apple Maps walking directions, and *My location*
+   shows where you are. It has its own full-screen mode. On a phone, selecting a
+   calendar entry scrolls here, since the map is otherwise far below the fold.
 
 The header shows the teaching week, the semester, the current weather in Lyngby,
-and a light / dark / system theme switch.
+and a light / dark / system theme switch. Light is the default; the choice is
+remembered.
 
 ## Ticking off and hiding
 
 - **Deadlines can be ticked off.** A done item greys out and is struck through
   rather than disappearing, so you can still see it happened.
-- **Entries can be hidden.** Selecting an event in the calendar offers *this one*
-  or *always*. "Always" hides the whole recurring series — useful because DTU
-  books some courses into two rooms at the same hour, and you only attend one.
-- **Turning them back on** happens only in the course details, which lists every
-  recurring entry of that course with a checkbox.
+- **Recurring entries can be hidden**, in the course details only — useful
+  because DTU books some courses into two rooms at the same hour and you only
+  attend one. Both hiding and un-hiding live in one place, so there is never a
+  switch you cannot find again.
+- **You can add your own** events and tasks with *Add entry*. They sit in the
+  same timeline as the feed, marked *Added*, and tasks tick off like deadlines.
 
 ## Short names
 
