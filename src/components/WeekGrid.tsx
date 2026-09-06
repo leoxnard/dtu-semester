@@ -66,7 +66,7 @@ export function WeekGrid({
       </div>
 
       <div ref={scrollerRef} className="overflow-x-auto">
-        <table className="w-full min-w-[44rem] border-collapse text-sm">
+        <table className="w-auto border-collapse text-sm" style={{ tableLayout: "auto" }}>
           <thead>
             <tr>
               <th className="w-16 border p-0" style={{ borderColor: "var(--rule)" }}>
@@ -82,7 +82,9 @@ export function WeekGrid({
                     background: day === todayName ? "var(--surface-alt)" : undefined,
                   }}
                 >
-                  {day}
+                  {/* Full name where it fits, three letters where it does not. */}
+                  <span className="hidden sm:inline">{day}</span>
+                  <span className="sm:hidden">{day.slice(0, 3)}</span>
                 </th>
               ))}
             </tr>
@@ -116,7 +118,7 @@ export function WeekGrid({
                           {course ? (
                             <button
                               onClick={() => onSelectCourse(course)}
-                              className="dtu-focus flex h-11 w-full items-center gap-2 px-0.5 text-left"
+                              className="dtu-focus flex h-11 w-full items-center gap-2 whitespace-nowrap px-0.5 text-left"
                             >
                               <span
                                 aria-hidden
@@ -128,7 +130,7 @@ export function WeekGrid({
                               </span>
                             </button>
                           ) : (
-                            <div className="h-11" />
+                            <div className="h-11 w-6" />
                           )}
                         </div>
                       )}

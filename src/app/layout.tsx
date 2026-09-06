@@ -4,6 +4,8 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "DTU Semester",
   description: "Your DTU timetable, deadlines and campus map in one place.",
+  // Home-screen behaviour on iOS: full-screen, own title, no Safari chrome.
+  appleWebApp: { capable: true, title: "Semester", statusBarStyle: "black-translucent" },
 };
 
 export const viewport: Viewport = {

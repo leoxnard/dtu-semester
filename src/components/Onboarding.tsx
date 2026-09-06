@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CALENDAR_GUIDE_URL } from "@/lib/dtu";
+import { DtuLogo } from "./DtuLogo";
 
 const STEPS = [
   'Inside a course, open "My Course" → "Calendar".',
@@ -23,9 +24,10 @@ export function Onboarding({
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-2xl flex-col justify-center px-5 py-12">
-      <p className="dtu-heading">Technical University of Denmark</p>
-      <h1 className="mt-2 text-4xl font-medium tracking-tight" style={{ color: "var(--color-dtu-red)" }}>
-        DTU&nbsp;Semester
+      <DtuLogo className="dtu-mark h-16 w-auto self-start" />
+      <p className="dtu-heading mt-4">Technical University of Denmark</p>
+      <h1 className="mt-1 text-4xl font-medium tracking-tight" style={{ color: "var(--color-dtu-red)" }}>
+        Semester
       </h1>
       <p className="mt-3 max-w-prose text-[15px] leading-relaxed" style={{ color: "var(--ink-soft)" }}>
         Your timetable, deadlines and campus map in one page. Paste your DTU Learn
@@ -96,7 +98,10 @@ export function Onboarding({
         </a>
       </section>
 
-      <p className="mt-6 text-xs leading-relaxed" style={{ color: "var(--ink-soft)" }}>
+      <p className="mt-6 text-[11px]" style={{ color: "var(--ink-soft)" }}>
+        A student project. Not affiliated with or endorsed by DTU.
+      </p>
+      <p className="mt-2 text-xs leading-relaxed" style={{ color: "var(--ink-soft)" }}>
         Your link is stored in this browser only. The server uses it to fetch your
         calendar and never saves it. Anyone holding this link can read your DTU
         calendar, so treat it like a password — you can regenerate it in DTU Learn

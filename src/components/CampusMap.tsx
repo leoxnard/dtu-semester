@@ -19,7 +19,7 @@ function marker(building: Building, tone: "primary" | "secondary" | "quiet") {
     className: "",
     html:
       `<div style="display:flex;align-items:center;justify-content:center;` +
-      `width:${size}px;height:${size}px;background:${bg};color:#fff;` +
+      `width:${size}px;height:${size}px;background:${bg};color:#fff;cursor:pointer;` +
       `font:500 ${tone === "quiet" ? 10 : 12}px Arial,sans-serif;` +
       `border:1px solid rgba(255,255,255,.85)">${building.ref}</div>`,
     iconSize: [size, size],
@@ -35,10 +35,23 @@ function marker(building: Building, tone: "primary" | "secondary" | "quiet") {
  * on the first floor". The pin gets you to the door; the room number next to it
  * gets you the rest of the way.
  */
-export function CampusMap({ focus }: { focus: MapFocus | null }) {
+export function CampusMap({
+  focus,
+  onSelectBuilding,
+}: {
+  focus: MapFocus | null;
+  onSelectBuilding: (building: Building) => void;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const focusLayer = useRef<L.LayerGroup | null>(null);
+
+  // The map is built once; routing clicks through a ref keeps the handler
+  // current without tearing the whole map down when the callback changes.
+  const selectRef = useRef(onSelectBuilding);
+  useEffect(() => {
+    selectRef.current = onSelectBuilding;
+  }, [onSelectBuilding]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -56,11 +69,18 @@ export function CampusMap({ focus }: { focus: MapFocus | null }) {
     }).addTo(map);
 
     // Every DTU building as a quiet backdrop, so the campus is readable even
-    // when nothing is selected.
+    // when nothing is selected — and clickable, so you can get directions to a
+    // building you have no teaching in.
     const backdrop = L.layerGroup().addTo(map);
     for (const b of ALL_BUILDINGS) {
-      L.marker([b.lat, b.lon], { icon: marker(b, "quiet"), interactive: false, keyboard: false })
-        .addTo(backdrop);
+      L.marker([b.lat, b.lon], {
+        icon: marker(b, "quiet"),
+        keyboard: true,
+        title: `Building ${b.ref}`,
+        alt: `Building ${b.ref}`,
+      })
+        .addTo(backdrop)
+        .on("click", () => selectRef.current(b));
     }
 
     focusLayer.current = L.layerGroup().addTo(map);
@@ -97,7 +117,10 @@ export function CampusMap({ focus }: { focus: MapFocus | null }) {
       const pin = L.marker([b.lat, b.lon], {
         icon: marker(b, isPrimary || focus.buildings.length === 1 ? "primary" : "secondary"),
         zIndexOffset: isPrimary ? 1000 : 0,
-      }).addTo(layer);
+        title: `Building ${b.ref}`,
+      })
+        .addTo(layer)
+        .on("click", () => selectRef.current(b));
       if (focus.label) pin.bindTooltip(focus.label, { direction: "top", offset: [0, -16] });
     }
 

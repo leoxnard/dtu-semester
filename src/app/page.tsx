@@ -43,6 +43,7 @@ export default function Page() {
   // Map full screen is deliberately not remembered across launches: only the
   // timetable earns that, because it is the thing you glance at every morning.
   const [mapFullscreen, setMapFullscreen] = useState(false);
+  const [pickedBuilding, setPickedBuilding] = useState<Building | null>(null);
 
   /**
    * Opening a course's details counts as being somewhere other than the
@@ -267,8 +268,15 @@ export default function Page() {
         <Agenda
           events={visibleEvents}
           courses={schedule.courses}
+          courseName={(code) => {
+            const course = schedule.courses.find((c) => c.code === code);
+            return course ? displayName(course) : null;
+          }}
           selectedUid={selectedEventUid}
-          onSelectEvent={(e) => setSelectedEventUid((prev) => (prev === e.uid ? null : e.uid))}
+          onSelectEvent={(e) => {
+            setPickedBuilding(null);
+            setSelectedEventUid((prev) => (prev === e.uid ? null : e.uid));
+          }}
           done={done}
           onToggleDone={toggleDone}
           onHideOccurrence={(uid) => {
@@ -284,13 +292,16 @@ export default function Page() {
 
         <MapPanel
           selection={selection}
+          pickedBuilding={pickedBuilding}
+          onPickBuilding={setPickedBuilding}
           fullscreen={mapFullscreen}
           onToggleFullscreen={() => setMapFullscreen((v) => !v)}
         />
 
         <footer className="border-t pt-4 text-xs leading-relaxed" style={{ borderColor: "var(--rule)", color: "var(--ink-soft)" }}>
-          Map data © OpenStreetMap contributors. Course statistics from the DTU Course Analyzer.
-          Your calendar link stays in this browser.
+          A student project. Not affiliated with or endorsed by DTU. Map data ©
+          OpenStreetMap contributors. Course statistics from the DTU Course Analyzer. Your
+          calendar link stays in this browser.
         </footer>
       </main>
 

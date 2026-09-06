@@ -29,15 +29,21 @@ export type MapSelection = {
 
 export function MapPanel({
   selection,
+  pickedBuilding,
+  onPickBuilding,
   fullscreen,
   onToggleFullscreen,
 }: {
   selection: MapSelection | null;
+  /** A building tapped straight on the map, with no event behind it. */
+  pickedBuilding: Building | null;
+  onPickBuilding: (building: Building | null) => void;
   fullscreen: boolean;
   onToggleFullscreen: () => void;
 }) {
-  const target: Building | null = selection?.focus.primary ?? selection?.focus.buildings[0] ?? null;
-  const rooms = selection?.rooms ?? [];
+  const target: Building | null =
+    pickedBuilding ?? selection?.focus.primary ?? selection?.focus.buildings[0] ?? null;
+  const rooms = pickedBuilding ? [] : selection?.rooms ?? [];
   const multiple = rooms.length > 1;
 
   return (
@@ -68,7 +74,14 @@ export function MapPanel({
         }
       >
         <div className={fullscreen ? "min-h-0" : "min-h-[22rem] lg:min-h-[26rem]"}>
-          <CampusMap focus={selection?.focus ?? null} />
+          <CampusMap
+            focus={
+              pickedBuilding
+                ? { buildings: [pickedBuilding], primary: pickedBuilding, label: null }
+                : selection?.focus ?? null
+            }
+            onSelectBuilding={onPickBuilding}
+          />
         </div>
 
         <div
@@ -79,9 +92,22 @@ export function MapPanel({
           }
           style={{ borderColor: "var(--rule)" }}
         >
-          {!selection ? (
+          {pickedBuilding ? (
+            <>
+              <p className="text-sm font-medium leading-snug">Building {pickedBuilding.ref}</p>
+              <p className="text-xs" style={{ color: "var(--ink-soft)" }}>Picked on the map</p>
+              <button
+                onClick={() => onPickBuilding(null)}
+                className="dtu-focus mt-2 text-xs underline underline-offset-4"
+                style={{ color: "var(--color-dtu-red)" }}
+              >
+                Back to the selected event
+              </button>
+            </>
+          ) : !selection ? (
             <p className="text-sm" style={{ color: "var(--ink-soft)" }}>
-              Select an event in the calendar above and the map will zoom to its building.
+              Select an event in the calendar above, or tap any building on the map, to get
+              directions to it.
             </p>
           ) : (
             <>
@@ -148,35 +174,37 @@ export function MapPanel({
                 </div>
               )}
 
-              {target && (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <a
-                    href={googleMapsUrl(target, `DTU Building ${target.ref}`)}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className="dtu-focus px-3 py-1.5 text-xs font-medium text-white"
-                    style={{ background: "var(--color-dtu-red)" }}
-                  >
-                    Google Maps ↗
-                  </a>
-                  <a
-                    href={appleMapsUrl(target, `DTU Building ${target.ref}`)}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className="dtu-focus border px-3 py-1.5 text-xs font-medium"
-                    style={{ borderColor: "var(--rule-strong)" }}
-                  >
-                    Apple Maps ↗
-                  </a>
-                </div>
-              )}
-
               {selection.focus.buildings.length === 0 && rooms.length > 0 && (
                 <p className="mt-3 text-xs" style={{ color: "var(--ink-soft)" }}>
                   This building is not mapped in OpenStreetMap, so there is nothing to pin.
                 </p>
               )}
             </>
+          )}
+
+          {/* Directions apply to whatever the map is pointing at, whether that
+              came from a calendar event or from tapping a building. */}
+          {target && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              <a
+                href={googleMapsUrl(target, `DTU Building ${target.ref}`)}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="dtu-focus px-3 py-1.5 text-xs font-medium text-white"
+                style={{ background: "var(--color-dtu-red)" }}
+              >
+                Google Maps ↗
+              </a>
+              <a
+                href={appleMapsUrl(target, `DTU Building ${target.ref}`)}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="dtu-focus border px-3 py-1.5 text-xs font-medium"
+                style={{ borderColor: "var(--rule-strong)" }}
+              >
+                Apple Maps ↗
+              </a>
+            </div>
           )}
         </div>
       </div>

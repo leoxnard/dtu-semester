@@ -1,6 +1,7 @@
 "use client";
 
 import { SLOTS, WEEKDAYS, type SlotLabel, type Weekday } from "@/lib/dtu";
+import { DtuLogo } from "./DtuLogo";
 import type { Course } from "@/lib/schedule";
 
 /**
@@ -45,9 +46,7 @@ export function TimetableFullscreen({
         className="flex shrink-0 items-center gap-3 border-b px-4 py-3"
         style={{ borderColor: "var(--rule-strong)" }}
       >
-        <span className="text-lg font-medium tracking-tight" style={{ color: "var(--color-dtu-red)" }}>
-          DTU
-        </span>
+        <DtuLogo className="dtu-mark h-8 w-auto shrink-0" />
         <span className="text-sm">
           <span className="font-medium tabular-nums">Week {week.current} of {week.total}</span>
           <span style={{ color: "var(--ink-soft)" }}> · {semesterLabel}</span>

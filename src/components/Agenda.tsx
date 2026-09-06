@@ -51,6 +51,7 @@ export function Agenda({
   selectedUid,
   onSelectEvent,
   done,
+  courseName,
   onToggleDone,
   onHideOccurrence,
   onHideSeries,
@@ -61,6 +62,8 @@ export function Agenda({
   selectedUid: string | null;
   onSelectEvent: (event: ScheduleEvent) => void;
   done: Set<string>;
+  /** Course title for the code, already shortened if the screen is narrow. */
+  courseName: (code: string | null) => string | null;
   onToggleDone: (uid: string) => void;
   onHideOccurrence: (uid: string) => void;
   onHideSeries: (key: string) => void;
@@ -214,6 +217,11 @@ export function Agenda({
                             <span className="flex flex-wrap items-baseline gap-x-2">
                               {event.courseCode && (
                                 <span className="text-xs font-medium tabular-nums">{event.courseCode}</span>
+                              )}
+                              {courseName(event.courseCode) && (
+                                <span className="min-w-0 truncate text-xs" style={{ color: "var(--ink-soft)" }}>
+                                  {courseName(event.courseCode)}
+                                </span>
                               )}
                               {isDeadline && !isDone && (
                                 <span

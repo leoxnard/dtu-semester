@@ -1,5 +1,9 @@
 # DTU Semester
 
+> A student project. Not affiliated with or endorsed by DTU. The DTU name and
+> logo are trademarks of the Technical University of Denmark, used here to
+> identify the university whose data this tool displays.
+
 A single page showing your DTU timetable, your deadlines and where on campus you
 need to be. Built for Lyngby campus.
 
@@ -124,4 +128,11 @@ webfont files, drop `NeoSansPro-{Regular,Medium,Bold}.woff2` into `public/fonts`
 and uncomment the `@font-face` blocks at the top of `src/app/globals.css`.
 
 Colours are DTU's corporate palette from
-[designguide.dtu.dk/colours](https://designguide.dtu.dk/colours).
+[designguide.dtu.dk/colours](https://designguide.dtu.dk/colours), and the logo is
+the official Corporate Red RGB vector master, used unmodified.
+
+## Home screen
+
+The manifest and icons are set up for "Add to Home Screen": it installs as
+*Semester* with the DTU mark on a corporate-red tile and opens without browser
+chrome.

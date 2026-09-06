@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTheme, type Theme } from "@/lib/store";
+import { DtuLogo } from "./DtuLogo";
 
 type Weather = { temperature: number; precipitationProbability: number | null; code: number };
 
@@ -60,12 +61,7 @@ export function Header({
       className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b px-4 py-3 sm:px-6"
       style={{ borderColor: "var(--rule-strong)" }}
     >
-      <span
-        className="text-lg font-medium tracking-tight"
-        style={{ color: "var(--color-dtu-red)" }}
-      >
-        DTU
-      </span>
+      <DtuLogo className="dtu-mark h-8 w-auto shrink-0" />
 
       <span className="text-sm">
         <span className="font-medium tabular-nums">

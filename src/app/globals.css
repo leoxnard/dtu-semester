@@ -98,6 +98,18 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/*
+ * The corporate logo. DTU's guide specifies Corporate Red on light grounds and
+ * the reversed white version on dark ones, so the mark follows the theme.
+ */
+.dtu-mark { color: var(--color-dtu-red); }
+
+:root[data-theme="dark"] .dtu-mark { color: #ffffff; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .dtu-mark { color: #ffffff; }
+}
+
 /* DTU's identity is squared off — no rounded corners anywhere in the chrome. */
 .dtu-panel {
   background: var(--surface);
