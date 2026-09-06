@@ -11,14 +11,28 @@ else to configure.
 
 1. **Timetable** — the fixed weekly grid. It never changes during a semester, so
    it has no week navigation. Selecting a course opens its details.
-2. **Calendar** — the live feed for the next three weeks. Lectures and deadlines
-   share one timeline but are visually distinct. Selecting an event zooms the map
-   to its building.
+2. **Calendar** — the live feed, one week at a time, with arrows to move between
+   weeks. Lectures and deadlines share the timeline but are visually distinct.
+   Selecting an event zooms the map to its building.
 3. **Campus map** — OpenStreetMap, with every DTU building numbered. The selected
    building gets Google Maps and Apple Maps walking directions.
 
-The header shows the teaching week, the semester, and the current weather in
-Lyngby.
+The header shows the teaching week, the semester, the current weather in Lyngby,
+and a light / dark / system theme switch.
+
+## Ticking off and hiding
+
+- **Deadlines can be ticked off.** A done item greys out and is struck through
+  rather than disappearing, so you can still see it happened.
+- **Entries can be hidden.** Selecting an event in the calendar offers *this one*
+  or *always*. "Always" hides the whole recurring series — useful because DTU
+  books some courses into two rooms at the same hour, and you only attend one.
+- **Turning them back on** happens only in the course details, which lists every
+  recurring entry of that course with a checkbox.
+
+A series is identified by course + weekday + start time + its exact set of rooms.
+ICS gives each occurrence its own UID, so that combination is what stays stable
+across the semester. All of this state is per browser, like the room choice.
 
 ## Privacy
 

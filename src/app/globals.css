@@ -68,6 +68,29 @@
   }
 }
 
+/* Explicit choice wins over the system preference in both directions. */
+:root[data-theme="dark"] {
+  --bg: #0a0a0a;
+  --surface: #141414;
+  --surface-alt: #1c1c1c;
+  --ink: #f2f2f2;
+  --ink-soft: #a8a8a8;
+  --rule: #2e2e2e;
+  --rule-strong: #4a4a4a;
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-alt: #f4f4f4;
+  --ink: #000000;
+  --ink-soft: #4a4a4a;
+  --rule: #dadada;
+  --rule-strong: #000000;
+  color-scheme: light;
+}
+
 html, body { background: var(--bg); color: var(--ink); }
 
 body {

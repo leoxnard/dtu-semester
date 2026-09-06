@@ -13,6 +13,10 @@ import { useCallback, useEffect, useState } from "react";
 
 const FEED_KEY = "dtu-semester.feed-url";
 const ROOM_KEY = "dtu-semester.room-choice";
+const DONE_KEY = "dtu-semester.done";
+const HIDDEN_SERIES_KEY = "dtu-semester.hidden-series";
+const SKIPPED_KEY = "dtu-semester.skipped";
+const THEME_KEY = "dtu-semester.theme";
 
 function read(key: string): string | null {
   try {
@@ -75,4 +79,99 @@ export function useRoomChoices() {
   }, []);
 
   return { choices, choose };
+}
+
+
+/** A set of ids persisted as a JSON array. Used for ticked-off and hidden items. */
+function useIdSet(storageKey: string) {
+  const [ids, setIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const stored = read(storageKey);
+    if (!stored) return;
+    try {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) setIds(new Set(parsed.filter((v) => typeof v === "string")));
+    } catch {
+      write(storageKey, null);
+    }
+  }, [storageKey]);
+
+  const toggle = useCallback(
+    (id: string, force?: boolean) => {
+      setIds((prev) => {
+        const next = new Set(prev);
+        const shouldAdd = force ?? !next.has(id);
+        if (shouldAdd) next.add(id);
+        else next.delete(id);
+        write(storageKey, JSON.stringify([...next]));
+        return next;
+      });
+    },
+    [storageKey],
+  );
+
+  /**
+   * Drops ids that no longer exist in the feed. Without this, per-occurrence
+   * state accumulates forever as semesters go by.
+   */
+  const prune = useCallback(
+    (live: Set<string>) => {
+      setIds((prev) => {
+        const next = new Set([...prev].filter((id) => live.has(id)));
+        if (next.size === prev.size) return prev;
+        write(storageKey, JSON.stringify([...next]));
+        return next;
+      });
+    },
+    [storageKey],
+  );
+
+  return { ids, toggle, prune };
+}
+
+/** Deadlines the user has ticked off. Keyed by event UID. */
+export function useDoneEvents() {
+  return useIdSet(DONE_KEY);
+}
+
+/** Single occurrences hidden with "hide this week". Keyed by event UID. */
+export function useSkippedOccurrences() {
+  return useIdSet(SKIPPED_KEY);
+}
+
+/** Whole recurring series hidden with "hide always". Keyed by series key. */
+export function useHiddenSeries() {
+  return useIdSet(HIDDEN_SERIES_KEY);
+}
+
+export type Theme = "system" | "light" | "dark";
+
+/**
+ * Theme choice. "system" leaves the page to prefers-color-scheme; the other two
+ * stamp data-theme on <html>, which the CSS overrides key off.
+ */
+export function useTheme() {
+  const [theme, setThemeState] = useState<Theme>("system");
+
+  useEffect(() => {
+    const stored = read(THEME_KEY);
+    const value: Theme = stored === "light" || stored === "dark" ? stored : "system";
+    setThemeState(value);
+    apply(value);
+  }, []);
+
+  const setTheme = useCallback((value: Theme) => {
+    write(THEME_KEY, value === "system" ? null : value);
+    setThemeState(value);
+    apply(value);
+  }, []);
+
+  return { theme, setTheme };
+}
+
+function apply(theme: Theme) {
+  const root = document.documentElement;
+  if (theme === "system") root.removeAttribute("data-theme");
+  else root.setAttribute("data-theme", theme);
 }

@@ -6,9 +6,10 @@ import { Header } from "@/components/Header";
 import { WeekGrid } from "@/components/WeekGrid";
 import { Agenda } from "@/components/Agenda";
 import { MapPanel, type MapSelection } from "@/components/MapPanel";
-import { CourseModal } from "@/components/CourseModal";
+import { CourseModal, seriesForCourse } from "@/components/CourseModal";
 import { findBuilding, type Building } from "@/lib/buildings";
-import { useFeedUrl, useRoomChoices } from "@/lib/store";
+import { useDoneEvents, useFeedUrl, useHiddenSeries, useRoomChoices, useSkippedOccurrences } from "@/lib/store";
+import { seriesKey } from "@/lib/series";
 import type { Course, Schedule, ScheduleEvent } from "@/lib/schedule";
 import type { Room } from "@/lib/rooms";
 
@@ -17,6 +18,9 @@ type Loaded = { schedule: Schedule; fetchedAt: number; warning?: string };
 export default function Page() {
   const { feedUrl, setFeedUrl, ready } = useFeedUrl();
   const { choices, choose } = useRoomChoices();
+  const { ids: done, toggle: toggleDone, prune: pruneDone } = useDoneEvents();
+  const { ids: skipped, toggle: toggleSkipped, prune: pruneSkipped } = useSkippedOccurrences();
+  const { ids: hiddenSeries, toggle: toggleSeries } = useHiddenSeries();
 
   const [data, setData] = useState<Loaded | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -52,9 +56,26 @@ export default function Page() {
     if (ready && feedUrl) void load(feedUrl);
   }, [ready, feedUrl, load]);
 
+  // Per-occurrence state is keyed by UID, which only exists while the event is
+  // in the feed. Drop the rest so it cannot pile up semester after semester.
+  useEffect(() => {
+    if (!data) return;
+    const live = new Set(data.schedule.events.map((e) => e.uid));
+    pruneDone(live);
+    pruneSkipped(live);
+  }, [data, pruneDone, pruneSkipped]);
+
+  /** What the calendar actually shows: the feed minus anything hidden. */
+  const visibleEvents = useMemo(() => {
+    if (!data) return [];
+    return data.schedule.events.filter(
+      (e) => !skipped.has(e.uid) && !hiddenSeries.has(seriesKey(e)),
+    );
+  }, [data, skipped, hiddenSeries]);
+
   const selectedEvent = useMemo(
-    () => data?.schedule.events.find((e) => e.uid === selectedEventUid) ?? null,
-    [data, selectedEventUid],
+    () => visibleEvents.find((e) => e.uid === selectedEventUid) ?? null,
+    [visibleEvents, selectedEventUid],
   );
 
   /**
@@ -168,10 +189,21 @@ export default function Page() {
         />
 
         <Agenda
-          events={schedule.events}
+          events={visibleEvents}
           courses={schedule.courses}
           selectedUid={selectedEventUid}
           onSelectEvent={(e) => setSelectedEventUid((prev) => (prev === e.uid ? null : e.uid))}
+          done={done}
+          onToggleDone={toggleDone}
+          onHideOccurrence={(uid) => {
+            toggleSkipped(uid, true);
+            setSelectedEventUid(null);
+          }}
+          onHideSeries={(key) => {
+            toggleSeries(key, true);
+            setSelectedEventUid(null);
+          }}
+          hiddenSeriesCount={hiddenSeries.size}
         />
 
         <MapPanel selection={selection} />
@@ -182,7 +214,14 @@ export default function Page() {
         </footer>
       </main>
 
-      {modalCourse && <CourseModal course={modalCourse} onClose={() => setModalCourse(null)} />}
+      {modalCourse && (
+        <CourseModal
+          course={modalCourse}
+          series={seriesForCourse(schedule.events, modalCourse.code, hiddenSeries)}
+          onToggleSeries={(key, hidden) => toggleSeries(key, hidden)}
+          onClose={() => setModalCourse(null)}
+        />
+      )}
     </>
   );
 }

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import type { CourseAnalysis } from "@/lib/analyzer";
-import type { Course } from "@/lib/schedule";
+import type { Course, ScheduleEvent } from "@/lib/schedule";
+import { seriesKey, seriesLabel } from "@/lib/series";
 import { COURSE_ANALYZER_URL, COURSE_BASE_URL, DTU_LEARN_COURSE, DTU_LEARN_HOME } from "@/lib/dtu";
 
 function Stat({ label, value, note }: { label: string; value: string | null; note?: string | null }) {
@@ -52,7 +53,36 @@ function GradeChart({ bars }: { bars: CourseAnalysis["gradeDistribution"] }) {
   );
 }
 
-export function CourseModal({ course, onClose }: { course: Course; onClose: () => void }) {
+export type SeriesRow = { key: string; label: string; count: number; hidden: boolean };
+
+/** One row per recurring entry of this course, so any of them can be turned back on. */
+export function seriesForCourse(
+  events: ScheduleEvent[],
+  courseCode: string,
+  hidden: Set<string>,
+): SeriesRow[] {
+  const rows = new Map<string, SeriesRow>();
+  for (const event of events) {
+    if (event.courseCode !== courseCode || event.kind !== "teaching") continue;
+    const key = seriesKey(event);
+    const existing = rows.get(key);
+    if (existing) existing.count += 1;
+    else rows.set(key, { key, label: seriesLabel(event), count: 1, hidden: hidden.has(key) });
+  }
+  return [...rows.values()].sort((a, b) => a.label.localeCompare(b.label));
+}
+
+export function CourseModal({
+  course,
+  series,
+  onToggleSeries,
+  onClose,
+}: {
+  course: Course;
+  series: SeriesRow[];
+  onToggleSeries: (key: string, hidden: boolean) => void;
+  onClose: () => void;
+}) {
   const [analysis, setAnalysis] = useState<CourseAnalysis | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
 
@@ -145,6 +175,42 @@ export function CourseModal({ course, onClose }: { course: Course; onClose: () =
               </p>
             </div>
           </div>
+
+          {series.length > 0 && (
+            <div>
+              <p className="dtu-heading">Recurring entries</p>
+              <p className="mt-1 text-xs" style={{ color: "var(--ink-soft)" }}>
+                DTU sometimes books one course into several rooms at the same hour. Switch off the
+                ones you do not attend — this is the only place to switch them back on.
+              </p>
+              <ul className="mt-2 space-y-1">
+                {series.map((row) => (
+                  <li key={row.key}>
+                    <label
+                      className="flex cursor-pointer items-center gap-2.5 border px-2 py-1.5 text-sm"
+                      style={{ borderColor: "var(--rule)", opacity: row.hidden ? 0.55 : 1 }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={!row.hidden}
+                        onChange={() => onToggleSeries(row.key, !row.hidden)}
+                        className="dtu-focus h-3.5 w-3.5 accent-[var(--color-dtu-red)]"
+                      />
+                      <span
+                        className="min-w-0 flex-1"
+                        style={{ textDecoration: row.hidden ? "line-through" : undefined }}
+                      >
+                        {row.label}
+                      </span>
+                      <span className="shrink-0 text-xs tabular-nums" style={{ color: "var(--ink-soft)" }}>
+                        {row.count}×
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {state === "loading" && (
             <p className="text-sm" style={{ color: "var(--ink-soft)" }}>Loading course statistics…</p>
