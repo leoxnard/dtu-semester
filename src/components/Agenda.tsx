@@ -23,14 +23,26 @@ const rangeFmt = new Intl.DateTimeFormat("en-GB", {
  * rather than the raw Date keeps this correct across the DST switch, where a
  * plain "subtract n × 86 400 000 ms" would drift by an hour.
  */
+function weekdayIndex(date = new Date()): number {
+  const short = new Intl.DateTimeFormat("en-GB", { timeZone: CAMPUS_TZ, weekday: "short" }).format(date);
+  const index = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].indexOf(short);
+  return index < 0 ? 0 : index;
+}
+
 function weekStart(offset: number): Date {
   const today = new Date();
-  const key = dayKeyFmt.format(today);
-  const midday = new Date(`${key}T12:00:00Z`);
-  const weekday = new Intl.DateTimeFormat("en-GB", { timeZone: CAMPUS_TZ, weekday: "short" }).format(today);
-  const index = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].indexOf(weekday);
-  midday.setUTCDate(midday.getUTCDate() - (index < 0 ? 0 : index) + offset * 7);
+  const midday = new Date(`${dayKeyFmt.format(today)}T12:00:00Z`);
+  midday.setUTCDate(midday.getUTCDate() - weekdayIndex(today) + offset * 7);
   return midday;
+}
+
+/**
+ * Which week to open on. Teaching runs Monday to Friday, so once it is the
+ * weekend the current week holds nothing you can still act on - the useful
+ * answer is what is coming, not what is over.
+ */
+function defaultWeekOffset(): number {
+  return weekdayIndex() >= 5 ? 1 : 0;
 }
 
 function relativeDay(key: string, todayKey: string): string | null {
@@ -70,7 +82,8 @@ export function Agenda({
   hiddenSeriesCount: number;
 }) {
   const todayKey = dayKeyFmt.format(new Date());
-  const [weekOffset, setWeekOffset] = useState(0);
+  const [baseOffset] = useState(defaultWeekOffset);
+  const [weekOffset, setWeekOffset] = useState(baseOffset);
 
   const { days, rangeLabel } = useMemo(() => {
     const start = weekStart(weekOffset);
@@ -130,14 +143,20 @@ export function Agenda({
           </button>
         </div>
 
-        {weekOffset !== 0 && (
+        {weekOffset !== baseOffset && (
           <button
-            onClick={() => setWeekOffset(0)}
+            onClick={() => setWeekOffset(baseOffset)}
             className="dtu-focus text-xs underline underline-offset-4"
             style={{ color: "var(--color-dtu-red)" }}
           >
-            This week
+            {baseOffset === 0 ? "This week" : "Next week"}
           </button>
+        )}
+
+        {baseOffset === 1 && weekOffset === 1 && (
+          <span className="text-xs" style={{ color: "var(--ink-soft)" }}>
+            Weekend — showing next week
+          </span>
         )}
 
         {hiddenSeriesCount > 0 && (

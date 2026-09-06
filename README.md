@@ -19,7 +19,8 @@ else to configure.
    its own, transposed so weekdays run down the page and the three time blocks
    run across — the whole week in portrait with no scrolling.
 2. **Calendar** — the live feed, one week at a time, with arrows to move between
-   weeks. Lectures and deadlines share the timeline but are visually distinct.
+   weeks. On a Saturday or Sunday it opens on the coming week, since teaching
+   runs Monday to Friday and the current one holds nothing left to act on. Lectures and deadlines share the timeline but are visually distinct.
    Selecting an event zooms the map to its building.
 3. **Campus map** — OpenStreetMap, with every DTU building numbered. The selected
    building gets Google Maps and Apple Maps walking directions. It has its own
