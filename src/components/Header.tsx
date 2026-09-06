@@ -1,126 +1,49 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useTheme, type Theme } from "@/lib/store";
 import { DtuLogo } from "./DtuLogo";
-import { MoonIcon, SunIcon, SystemIcon } from "./ThemeIcons";
 
-type Weather = { temperature: number; precipitationProbability: number | null; code: number };
-
-/** WMO weather codes, condensed to the few states worth knowing before cycling. */
-function describe(code: number): string {
-  if (code === 0) return "Clear";
-  if (code <= 3) return "Cloudy";
-  if (code <= 48) return "Fog";
-  if (code <= 57) return "Drizzle";
-  if (code <= 67) return "Rain";
-  if (code <= 77) return "Snow";
-  if (code <= 82) return "Showers";
-  if (code <= 86) return "Snow showers";
-  return "Thunderstorm";
-}
-
+/**
+ * Deliberately thin: where you are in the semester, and a way into the
+ * settings. Anything you only change occasionally lives in there instead.
+ */
 export function Header({
   semesterLabel,
   week,
-  fetchedAt,
-  onRefresh,
-  refreshing,
-  onForget,
+  onOpenSettings,
 }: {
   semesterLabel: string;
   week: { current: number; total: number };
-  fetchedAt: number | null;
-  onRefresh: () => void;
-  refreshing: boolean;
-  onForget: () => void;
+  onOpenSettings: () => void;
 }) {
-  const [weather, setWeather] = useState<Weather | null>(null);
-  const { theme, setTheme } = useTheme();
-
-  const THEMES: { value: Theme; Icon: (p: { className?: string }) => React.ReactElement; title: string }[] = [
-    { value: "light", Icon: SunIcon, title: "Light" },
-    { value: "dark", Icon: MoonIcon, title: "Dark" },
-    { value: "system", Icon: SystemIcon, title: "Match system" },
-  ];
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/weather")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (!cancelled && d && typeof d.temperature === "number") setWeather(d);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   return (
     <header
-      className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b px-4 py-3 sm:px-6"
+      className="flex items-center gap-3 border-b px-4 py-2.5 sm:px-6"
       style={{ borderColor: "var(--rule-strong)" }}
     >
-      <DtuLogo className="dtu-mark h-8 w-auto shrink-0" />
+      <DtuLogo className="dtu-mark h-7 w-auto shrink-0" />
 
-      <span className="text-sm">
+      <span className="min-w-0 truncate text-sm">
         <span className="font-medium tabular-nums">
           Week {week.current} of {week.total}
         </span>
         <span style={{ color: "var(--ink-soft)" }}> · {semesterLabel}</span>
       </span>
 
-      <div className="ml-auto flex items-center gap-4 text-sm">
-        {weather && (
-          <span style={{ color: "var(--ink-soft)" }} title="Lyngby campus">
-            <span className="tabular-nums">{weather.temperature}°C</span> {describe(weather.code)}
-            {weather.precipitationProbability != null && weather.precipitationProbability > 0 && (
-              <span className="tabular-nums"> · {weather.precipitationProbability}% rain</span>
-            )}
-          </span>
-        )}
-
-        <button
-          onClick={onRefresh}
-          disabled={refreshing}
-          className="dtu-focus underline underline-offset-4 disabled:opacity-40"
-          style={{ color: "var(--ink-soft)" }}
-          title={fetchedAt ? `Last updated ${new Date(fetchedAt).toLocaleString("en-GB")}` : undefined}
+      <button
+        onClick={onOpenSettings}
+        aria-label="Settings"
+        title="Settings"
+        className="dtu-focus ml-auto flex h-10 w-10 shrink-0 items-center justify-center border"
+        style={{ borderColor: "var(--rule)", color: "var(--ink-soft)" }}
+      >
+        <svg
+          viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor"
+          strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden
         >
-          {refreshing ? "Refreshing…" : "Refresh"}
-        </button>
-
-        <button
-          onClick={onForget}
-          className="dtu-focus underline underline-offset-4"
-          style={{ color: "var(--ink-soft)" }}
-        >
-          Forget link
-        </button>
-
-        <div className="flex border" style={{ borderColor: "var(--rule)" }} role="group" aria-label="Colour theme">
-          {THEMES.map(({ value, Icon, title }) => {
-            const active = theme === value;
-            return (
-              <button
-                key={value}
-                onClick={() => setTheme(value)}
-                className="dtu-focus flex h-7 w-9 items-center justify-center"
-                style={{
-                  background: active ? "var(--color-dtu-red)" : "transparent",
-                  color: active ? "#fff" : "var(--ink-soft)",
-                }}
-                aria-pressed={active}
-                aria-label={title}
-                title={title}
-              >
-                <Icon className="h-4 w-4" />
-              </button>
-            );
-          })}
-        </div>
-      </div>
+          <circle cx="12" cy="12" r="3.1" />
+          <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.9 19.3a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.7 8.9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1.03-1.56V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15.1 4.7a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9v.09a1.7 1.7 0 0 0 1.56 1.03H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.56 1.03Z" />
+        </svg>
+      </button>
     </header>
   );
 }

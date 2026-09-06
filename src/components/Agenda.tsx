@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import type { Course, ScheduleEvent } from "@/lib/schedule";
 import { CAMPUS_TZ } from "@/lib/dtu";
 import type { Room } from "@/lib/rooms";
+import type { DayWeather } from "@/app/api/weather/route";
+import { DMI_LYNGBY_URL, describeWeather } from "@/lib/weather";
 
 const dayFmt = new Intl.DateTimeFormat("en-GB", {
   timeZone: CAMPUS_TZ, weekday: "long", day: "numeric", month: "long",
@@ -69,6 +71,7 @@ export function Agenda({
   hiddenSeriesCount,
   onAddEntry,
   onRemoveCustom,
+  weatherByDay,
 }: {
   events: ScheduleEvent[];
   courses: Course[];
@@ -84,6 +87,8 @@ export function Agenda({
   onAddEntry: () => void;
   /** Custom entries carry an id so they can be deleted again. */
   onRemoveCustom: (id: string) => void;
+  /** yyyy-mm-dd -> forecast, for the days the forecast reaches. */
+  weatherByDay: Map<string, DayWeather>;
 }) {
   const todayKey = dayKeyFmt.format(new Date());
   const [baseOffset] = useState(defaultWeekOffset);
@@ -189,15 +194,18 @@ export function Agenda({
           return (
             <div key={key}>
               <h3
-                className="sticky top-0 z-10 border-b px-3 py-1.5 text-xs font-medium"
+                className="sticky top-0 z-10 flex flex-wrap items-baseline gap-x-2 border-b px-3 py-1.5 text-xs font-medium"
                 style={{
                   borderColor: "var(--rule)",
                   background: "var(--surface-alt)",
                   color: label ? "var(--color-dtu-red)" : "var(--ink-soft)",
                 }}
               >
-                {label ? `${label} · ` : ""}
-                {dayFmt.format(new Date(`${key}T12:00:00Z`))}
+                <span>
+                  {label ? `${label} · ` : ""}
+                  {dayFmt.format(new Date(`${key}T12:00:00Z`))}
+                </span>
+                <DayForecast weather={weatherByDay.get(key)} />
               </h3>
 
               <ul>
@@ -319,5 +327,37 @@ export function Agenda({
         })}
       </div>
     </section>
+  );
+}
+
+
+/**
+ * A day's weather, beside its date. Rain is shown in millimetres rather than as
+ * a percentage, because "60% chance" tells you nothing about whether to take a
+ * coat, and 4 mm does. It links to DMI, Denmark's meteorological institute, for
+ * the full forecast.
+ */
+function DayForecast({ weather }: { weather: DayWeather | undefined }) {
+  if (!weather) return null;
+  const wet = weather.precipitation >= 0.1;
+
+  return (
+    <a
+      href={DMI_LYNGBY_URL}
+      target="_blank"
+      rel="noreferrer noopener"
+      onClick={(e) => e.stopPropagation()}
+      className="dtu-focus font-normal underline decoration-dotted underline-offset-2"
+      style={{ color: "var(--ink-soft)" }}
+      title="Full forecast for Kongens Lyngby at DMI"
+    >
+      {describeWeather(weather.code)} <span className="tabular-nums">{weather.tempMax}°</span>
+      <span className="tabular-nums" style={{ opacity: 0.7 }}>/{weather.tempMin}°</span>
+      {wet && (
+        <span className="tabular-nums" style={{ color: "var(--color-dtu-blue-ink)" }}>
+          {" "}· {weather.precipitation} mm
+        </span>
+      )}
+    </a>
   );
 }

@@ -28,9 +28,15 @@ else to configure.
    shows where you are. It has its own full-screen mode. On a phone, selecting a
    calendar entry scrolls here, since the map is otherwise far below the fold.
 
-The header shows the teaching week, the semester, the current weather in Lyngby,
-and a light / dark / system theme switch. Light is the default; the choice is
-remembered.
+The header holds only the teaching week and the semester. Everything you change
+rather than read — theme, refreshing the calendar, removing the link — is behind
+the settings button. Light is the default theme; the choice is remembered.
+
+Each day in the calendar carries its own forecast: conditions, high and low, and
+rain in millimetres when there is any. Millimetres rather than a percentage,
+because "60% chance" does not tell you whether to take a coat and 4 mm does.
+Tapping it opens the full forecast for Kongens Lyngby at
+[DMI](https://www.dmi.dk), Denmark's meteorological institute.
 
 ## Ticking off and hiding
 
@@ -83,7 +89,7 @@ The app is stateless and has no accounts.
 | DTU Learn ICS feed | Courses, times, rooms, deadlines | Room notation is inconsistent; some events carry no room at all |
 | OpenStreetMap (via Overpass, at build time) | Building coordinates | Buildings only — OSM does not know individual rooms |
 | [DTU Course Analyzer](https://dtucourseanalyzer.pythonanywhere.com) | Grades, workload, evaluations | Independent hobby site with no API; scraped, so it can break |
-| Open-Meteo | Weather | — |
+| Open-Meteo | Weather | Needs no key; the UI links out to DMI for the authoritative national forecast |
 
 Two things the feed cannot give you:
 

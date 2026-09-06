@@ -14,6 +14,8 @@ import {
   useNicknames, useRoomChoices,
 } from "@/lib/store";
 import { AddEntry } from "@/components/AddEntry";
+import { Settings } from "@/components/Settings";
+import type { DayWeather } from "@/app/api/weather/route";
 import { seriesKey } from "@/lib/series";
 import type { Course, Schedule, ScheduleEvent } from "@/lib/schedule";
 import type { Room } from "@/lib/rooms";
@@ -46,6 +48,8 @@ export default function Page() {
   const [mapFullscreen, setMapFullscreen] = useState(false);
   const [pickedBuilding, setPickedBuilding] = useState<Building | null>(null);
   const [addingEntry, setAddingEntry] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [weather, setWeather] = useState<DayWeather[]>([]);
 
   /**
    * Opening a course's details counts as being somewhere other than the
@@ -88,6 +92,24 @@ export default function Page() {
   useEffect(() => {
     if (ready && feedUrl) void load(feedUrl);
   }, [ready, feedUrl, load]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/weather")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && Array.isArray(d?.days)) setWeather(d.days);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const weatherByDay = useMemo(
+    () => new Map(weather.map((day) => [day.date, day])),
+    [weather],
+  );
 
   useEffect(() => {
     if (!mapFullscreen) return;
@@ -260,14 +282,7 @@ export default function Page() {
       <Header
         semesterLabel={schedule.semester.label}
         week={schedule.week}
-        fetchedAt={data.fetchedAt}
-        refreshing={busy}
-        onRefresh={() => void load(feedUrl, true)}
-        onForget={() => {
-          setFeedUrl(null);
-          setData(null);
-          setSelectedEventUid(null);
-        }}
+        onOpenSettings={() => setSettingsOpen(true)}
       />
 
       <main className="mx-auto max-w-6xl space-y-8 px-4 py-6 sm:px-6">
@@ -326,6 +341,7 @@ export default function Page() {
           hiddenSeriesCount={hiddenSeries.size}
           onAddEntry={() => setAddingEntry(true)}
           onRemoveCustom={removeEntry}
+          weatherByDay={weatherByDay}
         />
 
         <MapPanel
@@ -342,6 +358,21 @@ export default function Page() {
           calendar link stays in this browser.
         </footer>
       </main>
+
+      {settingsOpen && (
+        <Settings
+          fetchedAt={data.fetchedAt}
+          refreshing={busy}
+          onRefresh={() => void load(feedUrl, true)}
+          onForget={() => {
+            setFeedUrl(null);
+            setData(null);
+            setSelectedEventUid(null);
+            setSettingsOpen(false);
+          }}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
 
       {addingEntry && (
         <AddEntry
