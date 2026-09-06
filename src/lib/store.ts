@@ -17,6 +17,8 @@ const DONE_KEY = "dtu-semester.done";
 const HIDDEN_SERIES_KEY = "dtu-semester.hidden-series";
 const SKIPPED_KEY = "dtu-semester.skipped";
 const THEME_KEY = "dtu-semester.theme";
+const VIEW_KEY = "dtu-semester.view";
+const NICKNAME_KEY = "dtu-semester.nicknames";
 
 function read(key: string): string | null {
   try {
@@ -174,4 +176,97 @@ function apply(theme: Theme) {
   const root = document.documentElement;
   if (theme === "system") root.removeAttribute("data-theme");
   else root.setAttribute("data-theme", theme);
+}
+
+
+export type View = "main" | "fullscreen";
+
+/**
+ * Which view to open on. Leaving the app while the full-screen timetable is up
+ * brings it back next time; being anywhere else — the main page, a course's
+ * details — brings back the main page.
+ *
+ * The choice is durable rather than session-scoped, so reopening a week later
+ * still lands on the timetable.
+ */
+export function useLastView() {
+  const [view, setViewState] = useState<View>("main");
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    setViewState(read(VIEW_KEY) === "fullscreen" ? "fullscreen" : "main");
+    setReady(true);
+  }, []);
+
+  /** What to open on next launch, without changing what is on screen now. */
+  const setLaunchView = useCallback((next: View) => {
+    write(VIEW_KEY, next === "fullscreen" ? "fullscreen" : null);
+  }, []);
+
+  const setView = useCallback(
+    (next: View) => {
+      setLaunchView(next);
+      setViewState(next);
+    },
+    [setLaunchView],
+  );
+
+  return { view, setView, setLaunchView, ready };
+}
+
+
+/** Course code -> short name, e.g. "02456" -> "DL". */
+export type Nicknames = Record<string, string>;
+
+/**
+ * Short names for courses, used only where the full title would not fit.
+ * Stored per browser like everything else here.
+ */
+export function useNicknames() {
+  const [nicknames, setNicknames] = useState<Nicknames>({});
+
+  useEffect(() => {
+    const stored = read(NICKNAME_KEY);
+    if (!stored) return;
+    try {
+      const parsed = JSON.parse(stored);
+      if (parsed && typeof parsed === "object") setNicknames(parsed as Nicknames);
+    } catch {
+      write(NICKNAME_KEY, null);
+    }
+  }, []);
+
+  const setNickname = useCallback((courseCode: string, nickname: string) => {
+    setNicknames((prev) => {
+      const next = { ...prev };
+      const trimmed = nickname.trim();
+      if (trimmed) next[courseCode] = trimmed.slice(0, 24);
+      else delete next[courseCode];
+      write(NICKNAME_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  return { nicknames, setNickname };
+}
+
+/**
+ * True on phone-width screens.
+ *
+ * Deliberately keyed to the viewport rather than to whether the grid overflows:
+ * shortening the titles changes the content width, so measuring overflow to
+ * decide whether to shorten would let the two flip back and forth forever.
+ */
+export function useIsNarrow(query = "(max-width: 767px)") {
+  const [narrow, setNarrow] = useState(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia(query);
+    const update = () => setNarrow(mql.matches);
+    update();
+    mql.addEventListener("change", update);
+    return () => mql.removeEventListener("change", update);
+  }, [query]);
+
+  return narrow;
 }

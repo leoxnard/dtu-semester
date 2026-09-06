@@ -10,12 +10,16 @@ else to configure.
 ## Layout
 
 1. **Timetable** — the fixed weekly grid. It never changes during a semester, so
-   it has no week navigation. Selecting a course opens its details.
+   it has no week navigation. Selecting a course opens its details. On screens
+   where the week does not fit, a **Full screen** button opens the timetable on
+   its own, transposed so weekdays run down the page and the three time blocks
+   run across — the whole week in portrait with no scrolling.
 2. **Calendar** — the live feed, one week at a time, with arrows to move between
    weeks. Lectures and deadlines share the timeline but are visually distinct.
    Selecting an event zooms the map to its building.
 3. **Campus map** — OpenStreetMap, with every DTU building numbered. The selected
-   building gets Google Maps and Apple Maps walking directions.
+   building gets Google Maps and Apple Maps walking directions. It has its own
+   full-screen mode.
 
 The header shows the teaching week, the semester, the current weather in Lyngby,
 and a light / dark / system theme switch.
@@ -29,6 +33,22 @@ and a light / dark / system theme switch.
   books some courses into two rooms at the same hour, and you only attend one.
 - **Turning them back on** happens only in the course details, which lists every
   recurring entry of that course with a checkbox.
+
+## Short names
+
+Courses can be given a short name in their details — "DL" for Deep learning.
+It is used in the timetable only on phone-width screens, where the full title
+does not fit; a wide screen always shows the full title. The choice is keyed to
+the viewport rather than to whether the grid overflows, because shortening the
+titles changes the content width and measuring that to decide whether to shorten
+would flip back and forth forever.
+
+## Where it reopens
+
+Leaving the app with the full-screen timetable up brings it back on the next
+launch, however long the gap. Being anywhere else — the main page, a course's
+details — brings back the main page. The map's full-screen mode is not
+remembered; only the timetable is, since that is the morning glance.
 
 A series is identified by course + weekday + start time + its exact set of rooms.
 ICS gives each occurrence its own UID, so that combination is what stays stable

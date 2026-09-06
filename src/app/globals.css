@@ -117,6 +117,18 @@ body {
   outline-offset: 2px;
 }
 
-/* Leaflet needs an explicit height and sane colours in dark mode. */
-.leaflet-container { background: var(--surface-alt); font-family: var(--font-sans); }
+/*
+ * Leaflet needs an explicit height and sane colours in dark mode.
+ *
+ * `isolation` is the important part: Leaflet gives its panes and controls
+ * z-index values from 400 to 800, which would otherwise paint straight over a
+ * dialog. Making the container its own stacking context keeps every one of
+ * those values contained inside the map, whatever Leaflet does internally.
+ */
+.leaflet-container {
+  background: var(--surface-alt);
+  font-family: var(--font-sans);
+  isolation: isolate;
+  z-index: 0;
+}
 .leaflet-control-attribution { font-size: 10px; }

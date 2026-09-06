@@ -7,8 +7,12 @@ import { WeekGrid } from "@/components/WeekGrid";
 import { Agenda } from "@/components/Agenda";
 import { MapPanel, type MapSelection } from "@/components/MapPanel";
 import { CourseModal, seriesForCourse } from "@/components/CourseModal";
+import { TimetableFullscreen } from "@/components/TimetableFullscreen";
 import { findBuilding, type Building } from "@/lib/buildings";
-import { useDoneEvents, useFeedUrl, useHiddenSeries, useRoomChoices, useSkippedOccurrences } from "@/lib/store";
+import {
+  useDoneEvents, useFeedUrl, useHiddenSeries, useIsNarrow, useLastView, useNicknames,
+  useRoomChoices, useSkippedOccurrences,
+} from "@/lib/store";
 import { seriesKey } from "@/lib/series";
 import type { Course, Schedule, ScheduleEvent } from "@/lib/schedule";
 import type { Room } from "@/lib/rooms";
@@ -21,12 +25,38 @@ export default function Page() {
   const { ids: done, toggle: toggleDone, prune: pruneDone } = useDoneEvents();
   const { ids: skipped, toggle: toggleSkipped, prune: pruneSkipped } = useSkippedOccurrences();
   const { ids: hiddenSeries, toggle: toggleSeries } = useHiddenSeries();
+  const { view, setView, setLaunchView, ready: viewReady } = useLastView();
+  const { nicknames, setNickname } = useNicknames();
+  const isNarrow = useIsNarrow();
+
+  /** Short name where the full title would not fit, full title everywhere else. */
+  const displayName = useCallback(
+    (course: Course) => (isNarrow && nicknames[course.code]) || course.title,
+    [isNarrow, nicknames],
+  );
 
   const [data, setData] = useState<Loaded | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [selectedEventUid, setSelectedEventUid] = useState<string | null>(null);
   const [modalCourse, setModalCourse] = useState<Course | null>(null);
+  // Map full screen is deliberately not remembered across launches: only the
+  // timetable earns that, because it is the thing you glance at every morning.
+  const [mapFullscreen, setMapFullscreen] = useState(false);
+
+  /**
+   * Opening a course's details counts as being somewhere other than the
+   * full-screen timetable, so the next launch lands on the main page. The
+   * current screen is left alone — tapping a course from full screen should
+   * not yank the timetable away behind the dialog.
+   */
+  const openCourse = useCallback(
+    (course: Course) => {
+      setModalCourse(course);
+      setLaunchView("main");
+    },
+    [setLaunchView],
+  );
 
   const load = useCallback(
     async (url: string, refresh = false) => {
@@ -55,6 +85,24 @@ export default function Page() {
   useEffect(() => {
     if (ready && feedUrl) void load(feedUrl);
   }, [ready, feedUrl, load]);
+
+  useEffect(() => {
+    if (!mapFullscreen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMapFullscreen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mapFullscreen]);
+
+  // Stop the page behind a full-screen view from scrolling under it.
+  useEffect(() => {
+    const locked = mapFullscreen || view === "fullscreen";
+    if (!locked) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [mapFullscreen, view]);
 
   // Per-occurrence state is keyed by UID, which only exists while the event is
   // in the feed. Drop the rest so it cannot pile up semester after semester.
@@ -115,7 +163,7 @@ export default function Page() {
     };
   }, [selectedEvent, choices, choose]);
 
-  if (!ready) return null;
+  if (!ready || !viewReady) return null;
 
   if (!feedUrl) {
     return (
@@ -153,6 +201,32 @@ export default function Page() {
 
   const { schedule } = data;
 
+  if (view === "fullscreen") {
+    return (
+      <>
+        <TimetableFullscreen
+          courses={schedule.courses}
+          term={schedule.semester.term}
+          semesterLabel={schedule.semester.label}
+          week={schedule.week}
+          onSelectCourse={openCourse}
+          onClose={() => setView("main")}
+          displayName={displayName}
+        />
+        {modalCourse && (
+          <CourseModal
+            course={modalCourse}
+            series={seriesForCourse(schedule.events, modalCourse.code, hiddenSeries)}
+            onToggleSeries={(key, hidden) => toggleSeries(key, hidden)}
+            nickname={nicknames[modalCourse.code] ?? ""}
+            onNicknameChange={(value) => setNickname(modalCourse.code, value)}
+            onClose={() => setModalCourse(null)}
+          />
+        )}
+      </>
+    );
+  }
+
   return (
     <>
       <Header
@@ -185,7 +259,9 @@ export default function Page() {
         <WeekGrid
           courses={schedule.courses}
           term={schedule.semester.term}
-          onSelectCourse={setModalCourse}
+          onSelectCourse={openCourse}
+          onFullscreen={() => setView("fullscreen")}
+          displayName={displayName}
         />
 
         <Agenda
@@ -206,7 +282,11 @@ export default function Page() {
           hiddenSeriesCount={hiddenSeries.size}
         />
 
-        <MapPanel selection={selection} />
+        <MapPanel
+          selection={selection}
+          fullscreen={mapFullscreen}
+          onToggleFullscreen={() => setMapFullscreen((v) => !v)}
+        />
 
         <footer className="border-t pt-4 text-xs leading-relaxed" style={{ borderColor: "var(--rule)", color: "var(--ink-soft)" }}>
           Map data © OpenStreetMap contributors. Course statistics from the DTU Course Analyzer.
@@ -219,6 +299,8 @@ export default function Page() {
           course={modalCourse}
           series={seriesForCourse(schedule.events, modalCourse.code, hiddenSeries)}
           onToggleSeries={(key, hidden) => toggleSeries(key, hidden)}
+          nickname={nicknames[modalCourse.code] ?? ""}
+          onNicknameChange={(value) => setNickname(modalCourse.code, value)}
           onClose={() => setModalCourse(null)}
         />
       )}

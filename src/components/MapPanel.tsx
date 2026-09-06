@@ -11,7 +11,7 @@ const CampusMap = dynamic(() => import("./CampusMap"), {
   loading: () => (
     <div
       className="flex h-full w-full items-center justify-center text-sm"
-      style={{ minHeight: "22rem", background: "var(--surface-alt)", color: "var(--ink-soft)" }}
+      style={{ background: "var(--surface-alt)", color: "var(--ink-soft)" }}
     >
       Loading campus map…
     </div>
@@ -27,21 +27,58 @@ export type MapSelection = {
   onChooseRoom: ((raw: string | null) => void) | null;
 };
 
-export function MapPanel({ selection }: { selection: MapSelection | null }) {
+export function MapPanel({
+  selection,
+  fullscreen,
+  onToggleFullscreen,
+}: {
+  selection: MapSelection | null;
+  fullscreen: boolean;
+  onToggleFullscreen: () => void;
+}) {
   const target: Building | null = selection?.focus.primary ?? selection?.focus.buildings[0] ?? null;
   const rooms = selection?.rooms ?? [];
   const multiple = rooms.length > 1;
 
   return (
-    <section aria-labelledby="map-heading">
-      <h2 id="map-heading" className="dtu-heading mb-2">Campus map</h2>
+    <section
+      aria-labelledby="map-heading"
+      className={fullscreen ? "fixed inset-0 z-[900] flex flex-col p-3" : undefined}
+      // margin:0 matters: the parent's space-y-8 puts a 32px margin on this
+      // section, and on a fixed element with top:0/bottom:0 that margin eats
+      // 32px of height, leaving the page visible in the gap.
+      style={fullscreen ? { background: "var(--bg)", margin: 0 } : undefined}
+    >
+      <div className="mb-2 flex items-center gap-3">
+        <h2 id="map-heading" className="dtu-heading">Campus map</h2>
+        <button
+          onClick={onToggleFullscreen}
+          className="dtu-focus ml-auto border px-3 py-1 text-xs font-medium"
+          style={{ borderColor: "var(--rule-strong)" }}
+        >
+          {fullscreen ? "Exit full screen" : "Full screen"}
+        </button>
+      </div>
 
-      <div className="dtu-panel grid lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="min-h-[22rem] lg:min-h-[26rem]">
+      <div
+        className={
+          fullscreen
+            ? "dtu-panel grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1fr)_20rem] lg:grid-rows-1"
+            : "dtu-panel grid lg:grid-cols-[minmax(0,1fr)_20rem]"
+        }
+      >
+        <div className={fullscreen ? "min-h-0" : "min-h-[22rem] lg:min-h-[26rem]"}>
           <CampusMap focus={selection?.focus ?? null} />
         </div>
 
-        <div className="border-t p-4 lg:border-l lg:border-t-0" style={{ borderColor: "var(--rule)" }}>
+        <div
+          className={
+            fullscreen
+              ? "max-h-[45dvh] overflow-y-auto border-t p-4 lg:max-h-none lg:border-l lg:border-t-0"
+              : "border-t p-4 lg:border-l lg:border-t-0"
+          }
+          style={{ borderColor: "var(--rule)" }}
+        >
           {!selection ? (
             <p className="text-sm" style={{ color: "var(--ink-soft)" }}>
               Select an event in the calendar above and the map will zoom to its building.

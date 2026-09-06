@@ -76,11 +76,15 @@ export function CourseModal({
   course,
   series,
   onToggleSeries,
+  nickname,
+  onNicknameChange,
   onClose,
 }: {
   course: Course;
   series: SeriesRow[];
   onToggleSeries: (key: string, hidden: boolean) => void;
+  nickname: string;
+  onNicknameChange: (value: string) => void;
   onClose: () => void;
 }) {
   const [analysis, setAnalysis] = useState<CourseAnalysis | null>(null);
@@ -110,7 +114,7 @@ export function CourseModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
+      className="fixed inset-0 z-[1000] flex items-end justify-center bg-black/40 sm:items-center"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -174,6 +178,23 @@ export function CourseModal({
                   : "None in the feed"}
               </p>
             </div>
+          </div>
+
+          <div>
+            <label htmlFor="nickname" className="dtu-heading">Short name</label>
+            <p className="mt-1 text-xs" style={{ color: "var(--ink-soft)" }}>
+              Used in the timetable on narrow screens, where the full title does not fit.
+              On a wide screen the full title is always shown.
+            </p>
+            <input
+              id="nickname"
+              value={nickname}
+              onChange={(e) => onNicknameChange(e.target.value)}
+              maxLength={24}
+              placeholder={course.title}
+              className="dtu-focus mt-2 w-full max-w-xs border px-2 py-1.5 text-sm outline-none"
+              style={{ borderColor: "var(--rule-strong)", background: "var(--surface)", color: "var(--ink)" }}
+            />
           </div>
 
           {series.length > 0 && (
@@ -263,20 +284,20 @@ export function CourseModal({
                   <div className="mt-1.5 overflow-x-auto">
                     <table className="w-full min-w-[22rem] border-collapse text-sm">
                       <thead>
-                        <tr className="text-left" style={{ color: "var(--ink-soft)" }}>
-                          <th className="border-b py-1 pr-2 font-normal" style={{ borderColor: "var(--rule)" }}>Semester</th>
-                          <th className="border-b py-1 pr-2 font-normal" style={{ borderColor: "var(--rule)" }}>Grade</th>
-                          <th className="border-b py-1 pr-2 font-normal" style={{ borderColor: "var(--rule)" }}>Failed</th>
-                          <th className="border-b py-1 font-normal" style={{ borderColor: "var(--rule)" }}>Students</th>
+                        <tr className="text-center" style={{ color: "var(--ink-soft)" }}>
+                          <th className="border-b py-1 text-center font-normal" style={{ borderColor: "var(--rule)" }}>Semester</th>
+                          <th className="border-b py-1 text-center font-normal" style={{ borderColor: "var(--rule)" }}>Grade</th>
+                          <th className="border-b py-1 text-center font-normal" style={{ borderColor: "var(--rule)" }}>Failed</th>
+                          <th className="border-b py-1 text-center font-normal" style={{ borderColor: "var(--rule)" }}>Students</th>
                         </tr>
                       </thead>
                       <tbody>
                         {analysis.semesterBreakdown.map((row) => (
                           <tr key={row.semester}>
-                            <td className="border-b py-1 pr-2" style={{ borderColor: "var(--rule)" }}>{row.semester}</td>
-                            <td className="border-b py-1 pr-2 tabular-nums" style={{ borderColor: "var(--rule)" }}>{row.grade}</td>
-                            <td className="border-b py-1 pr-2 tabular-nums" style={{ borderColor: "var(--rule)" }}>{row.failed}</td>
-                            <td className="border-b py-1 tabular-nums" style={{ borderColor: "var(--rule)" }}>{row.students}</td>
+                            <td className="border-b py-1 text-center align-middle" style={{ borderColor: "var(--rule)" }}>{row.semester}</td>
+                            <td className="border-b py-1 text-center align-middle tabular-nums" style={{ borderColor: "var(--rule)" }}>{row.grade}</td>
+                            <td className="border-b py-1 text-center align-middle tabular-nums" style={{ borderColor: "var(--rule)" }}>{row.failed}</td>
+                            <td className="border-b py-1 text-center align-middle tabular-nums" style={{ borderColor: "var(--rule)" }}>{row.students}</td>
                           </tr>
                         ))}
                       </tbody>

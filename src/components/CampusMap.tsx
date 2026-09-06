@@ -66,7 +66,14 @@ export function CampusMap({ focus }: { focus: MapFocus | null }) {
     focusLayer.current = L.layerGroup().addTo(map);
     mapRef.current = map;
 
+    // Leaflet caches its container size, so it renders half a map after any
+    // resize it did not cause — entering full screen, a phone rotating, the
+    // sidebar reflowing. Watching the element covers all of them at once.
+    const observer = new ResizeObserver(() => map.invalidateSize({ animate: false }));
+    observer.observe(containerRef.current);
+
     return () => {
+      observer.disconnect();
       map.remove();
       mapRef.current = null;
       focusLayer.current = null;
