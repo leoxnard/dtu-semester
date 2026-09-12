@@ -100,11 +100,17 @@ export function Agenda({
     const end = new Date(start);
     end.setUTCDate(end.getUTCDate() + 6);
     const endKey = dayKeyFmt.format(end);
+    const now = Date.now();
 
     const inWeek = events
       .filter((e) => {
         const key = dayKeyFmt.format(new Date(e.start));
-        return key >= startKey && key <= endKey;
+        if (key < startKey || key > endKey) return false;
+        // Once it has happened it is no longer useful on the agenda — an
+        // all-day entry only drops off the day after, since it has no instant
+        // within the day to have already passed.
+        if (e.allDay) return key >= todayKey;
+        return Date.parse(e.start) >= now;
       })
       .sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
 
@@ -120,7 +126,7 @@ export function Agenda({
       days: [...grouped.entries()],
       rangeLabel: `${rangeFmt.format(start)} – ${rangeFmt.format(end)}`,
     };
-  }, [events, weekOffset]);
+  }, [events, weekOffset, todayKey]);
 
   const colourOf = (code: string | null) =>
     courses.find((c) => c.code === code)?.colour ?? "var(--ink-soft)";
