@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { UMAMI_DOMAINS, UMAMI_SRC, UMAMI_WEBSITE_ID } from "@/lib/analytics";
 
 export const metadata: Metadata = {
   title: "DTU Semester",
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               `document.documentElement.setAttribute("data-theme","light")}`,
           }}
         />
+        <script defer src={UMAMI_SRC} data-website-id={UMAMI_WEBSITE_ID} data-domains={UMAMI_DOMAINS} />
       </head>
       <body className="min-h-dvh">{children}</body>
     </html>
